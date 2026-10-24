@@ -13,6 +13,10 @@
 - Test before saying something works: `npm test`, `cd src-tauri && cargo test`, and real pages. Say plainly what wasn't tested.
 - Talk to the owner in short, plain language. No jargon, no code in messages unless they ask.
 
+## UI work
+
+Before building or restyling any UI, follow the sourcing rules in @docs/ui-sourcing.md.
+
 ## Project facts
 
 - Working name **Readbox** (placeholder). MIT license. The README says it's AI-built; keep that honest.
