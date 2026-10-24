@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 
 /** The whole app: follow the system, or force light or dark. */
 export type Appearance = "system" | "light" | "dark";
+/** The app's colours: Apple greys and black, or warm paper white with ink blue. */
+export type Palette = "graphite" | "ink";
 /** The reading page only, like Apple Books' page colours. */
 export type PageTheme = "auto" | "light" | "sepia" | "dark";
 export type Font = "serif" | "sans";
@@ -9,6 +11,7 @@ export type Width = "narrow" | "medium" | "wide";
 
 export interface ReaderPrefs {
   appearance: Appearance;
+  palette: Palette;
   theme: PageTheme;
   font: Font;
   size: number;
@@ -16,7 +19,7 @@ export interface ReaderPrefs {
 }
 
 const KEY = "readbox.readerPrefs";
-const DEFAULTS: ReaderPrefs = { appearance: "system", theme: "auto", font: "serif", size: 20, width: "medium" };
+const DEFAULTS: ReaderPrefs = { appearance: "system", palette: "graphite", theme: "auto", font: "serif", size: 20, width: "medium" };
 export const SIZE_RANGE = { min: 14, max: 30 };
 
 function load(): ReaderPrefs {
@@ -50,6 +53,7 @@ export function useReaderPrefs() {
     const apply = () => {
       const dark = prefs.appearance === "dark" || (prefs.appearance === "system" && systemDark.matches);
       root.dataset.theme = dark ? "dark" : "light";
+      root.dataset.palette = prefs.palette;
       root.classList.toggle("dark", dark);
     };
     apply();

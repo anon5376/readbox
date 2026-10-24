@@ -109,6 +109,18 @@ function General({ libraryDir, prefs, onPrefs, onLibraryChanged }: Props) {
             ]}
           />
         </Row>
+        <Row label="Style" hint={prefs.palette === "ink" ? "Warm paper white with ink blue." : "Apple greys and black."}>
+          <SegmentedControl
+            aria-label="Style"
+            size="sm"
+            value={prefs.palette}
+            onChange={(palette) => onPrefs({ palette })}
+            options={[
+              { value: "graphite", label: "Graphite" },
+              { value: "ink", label: "Ink" },
+            ]}
+          />
+        </Row>
       </Group>
 
       <Group title="Library">

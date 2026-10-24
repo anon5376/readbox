@@ -1,6 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRef, useState, type FormEvent } from "react";
-import appIcon from "../../src-tauri/icons/128x128@2x.png";
 import { api, localFileUrl, type ArticleMeta, type Status } from "../lib/api";
 import { readingMinutes } from "../lib/extract";
 import { shortcut } from "../lib/platform";
@@ -77,13 +76,6 @@ export function LibraryView(props: Props) {
     <div className="library">
       <aside className="sidebar">
         <div className="titlebar-space" data-tauri-drag-region />
-        <button className="product" onClick={() => setShowSettings(true)} title="Library folder and settings">
-          <img src={appIcon} width={22} height={22} alt="" />
-          <span className="product-text">
-            <span className="product-name">Readbox</span>
-            <span className="product-scope">{folderName(libraryDir)}</span>
-          </span>
-        </button>
         <div className="sidebar-section" data-tauri-drag-region>
           Library
         </div>
@@ -156,16 +148,13 @@ export function LibraryView(props: Props) {
             <ImportBanner job={props.importJob} onStop={props.onStopImport} onDismiss={props.onDismissImport} />
           )}
 
-          <div className="panel">
+          <div className="list">
             {tab === "unread" &&
               pending.map((save) => (
                 <div key={save.key} className={`row pending arriving ${save.error ? "failed" : ""}`}>
-                  <div className="row-thumb placeholder" aria-hidden="true">
-                    {initial(hostname(save.link))}
-                  </div>
                   <div className="row-main">
                     <div className="row-title">{save.error ? "Couldn't save this link" : "Saving…"}</div>
-                    <div className="row-sub">{save.error ?? hostname(save.link)}</div>
+                    <div className="row-meta">{save.error ?? hostname(save.link)}</div>
                   </div>
                   {save.error && (
                     <div className="row-side buttons">
@@ -247,7 +236,14 @@ function ArticleRow({
       tabIndex={0}
       onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && onOpen(article)}
     >
-      {article.thumbnail && !thumbFailed ? (
+      <div className="row-main">
+        <div className="row-title">{article.title}</div>
+        <div className="row-meta">
+          {site} · {linkOnly ? "link only" : `${readingMinutes(article.wordCount)} min`} · {savedLabel(article.savedAt)}
+          {started && <span className="row-progress">{Math.round(article.progress * 100)}% read</span>}
+        </div>
+      </div>
+      {article.thumbnail && !thumbFailed && (
         <img
           className="row-thumb"
           src={localFileUrl(libraryDir, article.dir, article.thumbnail)}
@@ -255,24 +251,7 @@ function ArticleRow({
           loading="lazy"
           onError={() => setThumbFailed(true)}
         />
-      ) : (
-        <div className="row-thumb placeholder" aria-hidden="true">
-          {initial(site)}
-        </div>
       )}
-      <div className="row-main">
-        <div className="row-title">{article.title}</div>
-        <div className="row-sub">
-          <span className="row-site">
-            {site} · {linkOnly ? "link only" : `${readingMinutes(article.wordCount)} min`}
-          </span>
-          {article.excerpt && <span className="row-excerpt"> — {article.excerpt}</span>}
-        </div>
-      </div>
-      <div className="row-side">
-        <span className="row-date">{savedLabel(article.savedAt)}</span>
-        {started && <span className="row-progress">{Math.round(article.progress * 100)}% read</span>}
-      </div>
       <div className="row-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <button
           className="icon-button"
@@ -395,10 +374,3 @@ function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
 }
 
-function initial(name: string): string {
-  return (name.replace(/^www\./, "").match(/[\p{L}\p{N}]/u)?.[0] ?? "?").toUpperCase();
-}
-
-function folderName(path: string): string {
-  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
-}
