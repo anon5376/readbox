@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "test": "vitest run",
-    "design": "vite --port 1430 --strictPort false"
+    "design": "vite --port 1430 --strictPort false",
+    "ui-check": "node scripts/ui-check.mjs"
   },
   "dependencies": {
     "@mozilla/readability": "^0.6.0",

@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/anon5376/readbox/releases/latest"><img src="https://img.shields.io/github/v/release/anon5376/readbox?label=download&color=c4582a" alt="Latest release"></a>
+  <a href="https://github.com/anon5376/readbox/releases/latest"><img src="https://img.shields.io/github/v/release/anon5376/readbox?label=download&color=1d1d1f" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-555" alt="macOS and Windows">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555" alt="MIT license"></a>
 </p>
@@ -112,12 +112,13 @@ npm run tauri dev    # run the app
 npm test             # frontend tests
 npm run design       # the interface with sample articles at http://localhost:1430/design-preview.html
 scripts/screenshots.sh out/   # screenshots of every screen (needs npm run design and Chrome)
+npm run ui-check     # every button reacts to the pointer; reader widths differ (needs npm run design and Chrome)
 cd src-tauri && cargo test   # library/storage tests
 ```
 
 Article cleaning uses Mozilla's [Readability](https://github.com/mozilla/readability) (the engine behind Firefox's reader view) and [DOMPurify](https://github.com/cure53/DOMPurify).
 
-The interface uses the Segmented Control from [affectUI](https://www.affectui.com) (MIT) and animations ported from [Rare UI](https://rareui.com) (Animated Counter, Bounce Sidebar, Delete Button and Scroll Progress, under Rare UI's MIT + Commons Clause + Attribution licence in `src/components/rareui/LICENSE`). Its look follows the app-screen rules of [taste-skill](https://github.com/Leonxlnx/taste-skill).
+The interface uses the Segmented Control from [affectUI](https://www.affectui.com) (MIT) and animations adapted from [Rare UI](https://rareui.com) (Animated Counter, Bounce Sidebar, Delete Button and Scroll Progress, toned down and rewritten in CSS, under Rare UI's MIT + Commons Clause + Attribution licence in `src/components/rareui/LICENSE`).
 
 ## License
 

@@ -107,6 +107,7 @@ localStorage.setItem(
     palette: params.get("palette") ?? "graphite",
     theme: params.get("page") ?? "auto",
     width: params.get("width") ?? "medium",
+    size: Number(params.get("size") ?? 20),
   }),
 );
 
