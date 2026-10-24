@@ -2,6 +2,8 @@
 
 A calm read-later app for Mac and Windows. Save an article, read it later, offline, without ads or clutter.
 
+![Readbox: the reading list](docs/screenshot-library.png)
+
 - **No account, no server.** Nothing you save leaves your computer.
 - **Your library is a folder of plain files.** Put it in Dropbox, iCloud Drive or OneDrive to sync between computers. You can open the files without the app.
 - **Small and fast.** Built with [Tauri](https://tauri.app), not a bundled Chrome.
@@ -9,6 +11,8 @@ A calm read-later app for Mac and Windows. Save an article, read it later, offli
 > **Status:** early. Saving (paste a link, or the browser extension), importing from Pocket, Omnivore and Instapaper, the reading list and the reader work. Windows builds come next.
 
 > **Built with AI.** Most of the code is written by AI coding agents, directed and tested by a human. Bugs are likely at this stage; please open an issue.
+
+![Reading an article in Readbox](docs/screenshot-reader.png)
 
 ## Using it
 
@@ -59,6 +63,8 @@ Needs [Node.js](https://nodejs.org) and [Rust](https://rustup.rs).
 npm install
 npm run tauri dev    # run the app
 npm test             # frontend tests
+npm run design       # the interface with sample articles at http://localhost:1430/design-preview.html
+scripts/screenshots.sh out/   # screenshots of every screen (needs npm run design and Chrome)
 cd src-tauri && cargo test   # library/storage tests
 ```
 

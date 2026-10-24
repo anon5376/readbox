@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "r
 import { api, localFileUrl, type ArticleMeta } from "../lib/api";
 import { readingMinutes, toDisplayHtml } from "../lib/extract";
 import { SIZE_RANGE, type ReaderPrefs } from "../lib/prefs";
+import { Icon } from "./Icon";
 
 const PROGRESS_SAVE_DELAY_MS = 600;
 
@@ -19,7 +20,10 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
+  // The title moves into the toolbar once the article's own heading scrolls away.
+  const [titleInToolbar, setTitleInToolbar] = useState(false);
   const scroller = useRef<HTMLDivElement>(null);
+  const progressBar = useRef<HTMLDivElement>(null);
   const pendingProgress = useRef<number | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
 
@@ -41,11 +45,16 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   // Return to where the reader left off once the text is on screen.
   useLayoutEffect(() => {
     const el = scroller.current;
-    if (html === null || !el || article.progress <= 0) return;
-    el.scrollTop = article.progress * (el.scrollHeight - el.clientHeight);
+    if (html === null || !el) return;
+    if (article.progress > 0) el.scrollTop = article.progress * (el.scrollHeight - el.clientHeight);
+    showProgress(article.progress);
     // Only on first render of this article's text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html]);
+
+  const showProgress = (progress: number) => {
+    if (progressBar.current) progressBar.current.style.transform = `scaleX(${progress})`;
+  };
 
   const flushProgress = () => {
     window.clearTimeout(saveTimer.current);
@@ -60,7 +69,10 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   const onScroll = () => {
     const el = scroller.current!;
     const scrollable = el.scrollHeight - el.clientHeight;
-    pendingProgress.current = scrollable <= 0 ? 1 : el.scrollTop / scrollable;
+    const progress = scrollable <= 0 ? 1 : el.scrollTop / scrollable;
+    showProgress(progress);
+    setTitleInToolbar(el.scrollTop > 160);
+    pendingProgress.current = progress;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(flushProgress, PROGRESS_SAVE_DELAY_MS);
   };
@@ -82,32 +94,47 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
     if (/^https?:\/\//i.test(href)) openUrl(href);
   };
 
+  const archived = article.status === "archived";
   const toggleArchive = async () => {
-    const status = article.status === "archived" ? "unread" : "archived";
-    onChange(await api.updateArticle(article.dir, { status }));
-    if (status === "archived") onBack();
+    onChange(await api.updateArticle(article.dir, { status: archived ? "unread" : "archived" }));
+    if (!archived) onBack();
   };
 
-  const details = [article.siteName ?? hostname(article.url), article.byline, `${readingMinutes(article.wordCount)} min read`]
+  const site = article.siteName ?? hostname(article.url);
+  const details = [article.byline, article.wordCount ? `${readingMinutes(article.wordCount)} min read` : null]
     .filter(Boolean)
     .join(" · ");
 
   return (
     <div className="reader">
-      <header className="toolbar">
-        <button className="ghost" onClick={onBack} title="Back to list (Esc)">
-          ← Back
+      <header className="toolbar reader-toolbar" data-tauri-drag-region>
+        <button className="ghost back-button" onClick={onBack} title="Back to the list (Esc)">
+          <Icon name="back" />
+          Library
         </button>
-        <div className="toolbar-spacer" />
-        <button className="ghost" onClick={() => setShowPrefs((v) => !v)} aria-expanded={showPrefs} title="Text settings">
-          Aa
-        </button>
-        <button className="ghost" onClick={toggleArchive}>
-          {article.status === "archived" ? "Move to Unread" : "Archive"}
-        </button>
-        <button className="ghost" onClick={() => openUrl(article.url)} title={article.url}>
-          Original ↗
-        </button>
+        <div className={`toolbar-title ${titleInToolbar ? "visible" : ""}`} data-tauri-drag-region>
+          {article.title}
+        </div>
+        <div className="toolbar-actions">
+          <button
+            className={`icon-button ${showPrefs ? "active" : ""}`}
+            onClick={() => setShowPrefs((v) => !v)}
+            aria-expanded={showPrefs}
+            title="Text settings"
+            data-panel="text"
+          >
+            <Icon name="text" />
+          </button>
+          <button className="icon-button" onClick={toggleArchive} title={archived ? "Move to Unread" : "Archive"}>
+            <Icon name={archived ? "unarchive" : "archive"} />
+          </button>
+          <button className="icon-button" onClick={() => openUrl(article.url)} title="Open the original">
+            <Icon name="external" />
+          </button>
+        </div>
+        <div className="reading-progress" aria-hidden="true">
+          <div ref={progressBar} />
+        </div>
         {showPrefs && <PrefsPanel prefs={prefs} onPrefs={onPrefs} />}
       </header>
 
@@ -116,10 +143,24 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
           className={`reader-article font-${prefs.font} width-${prefs.width}`}
           style={{ fontSize: `${prefs.size}px` }}
         >
+          <p className="reader-site">{site}</p>
           <h1>{article.title}</h1>
-          <p className="reader-details">{details}</p>
+          {details && <p className="reader-details">{details}</p>}
           {error && <p className="error">Couldn't open this article: {error}</p>}
-          {html !== null && <div className="reader-body" onClick={onContentClick} dangerouslySetInnerHTML={{ __html: html }} />}
+          {html !== null && (
+            <div className="reader-body" onClick={onContentClick} dangerouslySetInnerHTML={{ __html: html }} />
+          )}
+          {html !== null && (
+            <footer className="reader-end">
+              <button className={archived ? "" : "primary"} onClick={toggleArchive}>
+                <Icon name={archived ? "unarchive" : "check"} />
+                {archived ? "Move back to Unread" : "Done, archive it"}
+              </button>
+              <button className="ghost" onClick={() => openUrl(article.url)}>
+                Open the original
+              </button>
+            </footer>
+          )}
         </article>
       </div>
     </div>
@@ -131,14 +172,14 @@ function PrefsPanel({ prefs, onPrefs }: { prefs: ReaderPrefs; onPrefs: Props["on
     onPrefs({ size: Math.min(SIZE_RANGE.max, Math.max(SIZE_RANGE.min, prefs.size + delta)) });
 
   return (
-    <div className="prefs-panel" role="dialog" aria-label="Text settings">
+    <div className="popover prefs-panel" role="dialog" aria-label="Text settings">
       <div className="prefs-row">
         <button onClick={() => step(-2)} disabled={prefs.size <= SIZE_RANGE.min} aria-label="Smaller text">
-          A−
+          <span className="size-small">A</span>
         </button>
         <span className="prefs-value">{prefs.size}</span>
         <button onClick={() => step(2)} disabled={prefs.size >= SIZE_RANGE.max} aria-label="Larger text">
-          A+
+          <span className="size-large">A</span>
         </button>
       </div>
       <Segmented
@@ -151,11 +192,25 @@ function PrefsPanel({ prefs, onPrefs }: { prefs: ReaderPrefs; onPrefs: Props["on
         options={[["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]]}
         onChange={(width) => onPrefs({ width })}
       />
-      <Segmented
-        value={prefs.theme}
-        options={[["system", "Auto"], ["light", "Light"], ["sepia", "Sepia"], ["dark", "Dark"]]}
-        onChange={(theme) => onPrefs({ theme })}
-      />
+      <div className="theme-swatches">
+        {(
+          [
+            ["system", "Auto"],
+            ["light", "Light"],
+            ["sepia", "Sepia"],
+            ["dark", "Dark"],
+          ] as const
+        ).map(([theme, label]) => (
+          <button
+            key={theme}
+            className={`swatch swatch-${theme} ${prefs.theme === theme ? "selected" : ""}`}
+            onClick={() => onPrefs({ theme })}
+          >
+            <span className="swatch-dot" />
+            {label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

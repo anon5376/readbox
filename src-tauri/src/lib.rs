@@ -1,7 +1,7 @@
 mod bridge;
 mod library;
 
-use library::{ArticleMeta, Library, MetaPatch, NewArticle};
+use library::{ArticleMeta, Library, MetaPatch, NewArticle, SavedImage};
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
@@ -153,13 +153,13 @@ fn trash_article(root: State<LibraryRoot>, dir: String) -> Result<(), String> {
     library(&root).trash(&dir).map_err(err)
 }
 
-/// Downloads one image into the article folder and returns its relative path.
+/// Downloads one image into the article folder; returns where it went and its size.
 #[tauri::command]
 async fn download_image(
     root: State<'_, LibraryRoot>,
     dir: String,
     url: String,
-) -> Result<String, String> {
+) -> Result<SavedImage, String> {
     let url = parse_web_url(&url)?;
     let response = http().get(url).send().await.map_err(err)?;
     if !response.status().is_success() {

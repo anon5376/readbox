@@ -42,6 +42,9 @@ pub struct ArticleMeta {
     /// How far the reader has scrolled, 0.0 to 1.0.
     #[serde(default)]
     pub progress: f64,
+    /// A picture from the article for the list, e.g. `images/ab12….jpg`.
+    #[serde(default)]
+    pub thumbnail: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -78,6 +81,15 @@ pub struct NewArticle {
 pub struct MetaPatch {
     pub status: Option<Status>,
     pub progress: Option<f64>,
+    pub thumbnail: Option<String>,
+}
+
+/// A saved image and its size, so the UI can skip icons when picking a thumbnail.
+#[derive(Debug, Serialize, PartialEq)]
+pub struct SavedImage {
+    pub path: String,
+    pub width: u32,
+    pub height: u32,
 }
 
 pub struct Library {
@@ -124,6 +136,7 @@ impl Library {
             saved_at: new.saved_at,
             status: new.status.unwrap_or(Status::Unread),
             progress: new.progress.unwrap_or(0.0).clamp(0.0, 1.0),
+            thumbnail: None,
         };
         write_atomic(&path.join(HTML_FILE), new.html.as_bytes())?;
         self.write_meta(&path, &meta)?;
@@ -172,6 +185,15 @@ impl Library {
         if let Some(progress) = patch.progress {
             meta.progress = progress.clamp(0.0, 1.0);
         }
+        if let Some(thumbnail) = patch.thumbnail {
+            let inside_images = thumbnail.strip_prefix("images/").is_some_and(|name| {
+                !name.is_empty() && !name.contains(['/', '\\']) && !name.starts_with('.')
+            });
+            if !inside_images {
+                return Err(io::Error::new(io::ErrorKind::InvalidInput, "invalid thumbnail path"));
+            }
+            meta.thumbnail = Some(thumbnail);
+        }
         self.write_meta(&path, &meta)?;
         Ok(meta)
     }
@@ -183,8 +205,8 @@ impl Library {
     }
 
     /// Stores image bytes under a content hash and returns the path relative to
-    /// the article folder, e.g. `images/ab12….jpg`.
-    pub fn save_image(&self, dir: &str, bytes: &[u8], ext: &str) -> io::Result<String> {
+    /// the article folder, e.g. `images/ab12….jpg`, with the image's size.
+    pub fn save_image(&self, dir: &str, bytes: &[u8], ext: &str) -> io::Result<SavedImage> {
         let images = self.article_path(dir)?.join(IMAGES_DIR);
         fs::create_dir_all(&images)?;
         let name = format!("{}.{}", &hex::encode(Sha256::digest(bytes))[..32], ext);
@@ -192,7 +214,10 @@ impl Library {
         if !target.exists() {
             write_atomic(&target, bytes)?;
         }
-        Ok(format!("{IMAGES_DIR}/{name}"))
+        let (width, height) = imagesize::blob_size(bytes)
+            .map(|size| (size.width as u32, size.height as u32))
+            .unwrap_or((0, 0));
+        Ok(SavedImage { path: format!("{IMAGES_DIR}/{name}"), width, height })
     }
 
     fn write_meta(&self, path: &Path, meta: &ArticleMeta) -> io::Result<()> {
@@ -291,11 +316,34 @@ mod tests {
         let lib = Library::new(tmp.path());
         let meta = lib.create(sample("Post", "2026-10-01T00:00:00Z")).unwrap();
         let updated = lib
-            .update(&meta.dir, MetaPatch { status: Some(Status::Archived), progress: Some(1.7) })
+            .update(&meta.dir, MetaPatch { status: Some(Status::Archived), progress: Some(1.7), thumbnail: None })
             .unwrap();
         assert_eq!(updated.status, Status::Archived);
         assert_eq!(updated.progress, 1.0);
         assert_eq!(lib.list().unwrap()[0], updated);
+    }
+
+    #[test]
+    fn thumbnail_must_be_one_of_the_articles_images() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let meta = lib.create(sample("Post", "2026-10-01T00:00:00Z")).unwrap();
+        let patch = |t: &str| MetaPatch { thumbnail: Some(t.into()), ..Default::default() };
+        assert!(lib.update(&meta.dir, patch("images/ab.jpg")).is_ok());
+        for bad in ["../meta.json", "images/../../x", "images/", "/etc/passwd", "images/a\\b"] {
+            assert!(lib.update(&meta.dir, patch(bad)).is_err(), "{bad} should be rejected");
+        }
+    }
+
+    #[test]
+    fn reads_image_sizes() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let meta = lib.create(sample("Post", "2026-10-01T00:00:00Z")).unwrap();
+        // Smallest valid GIF header: 3 x 2 pixels.
+        let gif = b"GIF89a\x03\x00\x02\x00\x00\x00\x00";
+        let saved = lib.save_image(&meta.dir, gif, "gif").unwrap();
+        assert_eq!((saved.width, saved.height), (3, 2));
     }
 
     #[test]
@@ -315,8 +363,9 @@ mod tests {
         let a = lib.save_image(&meta.dir, b"png-bytes", "png").unwrap();
         let b = lib.save_image(&meta.dir, b"png-bytes", "png").unwrap();
         assert_eq!(a, b);
-        assert!(a.starts_with("images/") && a.ends_with(".png"));
-        assert!(tmp.path().join("articles").join(&meta.dir).join(&a).exists());
+        assert!(a.path.starts_with("images/") && a.path.ends_with(".png"));
+        assert_eq!((a.width, a.height), (0, 0), "unreadable images report no size");
+        assert!(tmp.path().join("articles").join(&meta.dir).join(&a.path).exists());
     }
 
     #[test]

@@ -31,6 +31,7 @@ url = "2"
 tauri-plugin-dialog = "2"
 uuid = { version = "1", features = ["v4"] }
 tiny_http = "0.12"
+imagesize = "0.15"
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

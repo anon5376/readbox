@@ -1,8 +1,10 @@
-import { api, type ArticleMeta, type Status } from "./api";
+import { api, type ArticleMeta, type SavedImage, type Status } from "./api";
 import { collectImageUrls, extractArticle, replaceImageSources } from "./extract";
 import type { ImportItem } from "./importers";
 
 const IMAGE_DOWNLOADS_AT_ONCE = 4;
+/** Smaller pictures are usually icons, avatars or tracking pixels. */
+const THUMBNAIL_MIN = { width: 320, height: 160 };
 
 /** Imports keep when and how an item was saved in the other app. */
 export interface SaveOptions {
@@ -57,23 +59,28 @@ export async function savePage(pageHtml: string, url: string, options: SaveOptio
     progress: options.progress,
   });
 
-  const localPaths: Record<string, string> = {};
-  const queue = collectImageUrls(article.html);
+  const imageUrls = collectImageUrls(article.html);
+  const saved: Record<string, SavedImage> = {};
+  const queue = [...imageUrls];
   const worker = async () => {
     for (let url = queue.shift(); url; url = queue.shift()) {
       try {
-        localPaths[url] = await api.downloadImage(meta.dir, url);
+        saved[url] = await api.downloadImage(meta.dir, url);
       } catch {
         // Keep the remote URL; the image still shows when online.
       }
     }
   };
   await Promise.all(Array.from({ length: IMAGE_DOWNLOADS_AT_ONCE }, worker));
+  if (Object.keys(saved).length === 0) return meta;
 
-  if (Object.keys(localPaths).length > 0) {
-    await api.writeArticle(meta.dir, replaceImageSources(article.html, localPaths));
-  }
-  return meta;
+  const localPaths = Object.fromEntries(Object.entries(saved).map(([url, image]) => [url, image.path]));
+  await api.writeArticle(meta.dir, replaceImageSources(article.html, localPaths));
+
+  const thumbnail = imageUrls
+    .map((url) => saved[url])
+    .find((image) => image && image.width >= THUMBNAIL_MIN.width && image.height >= THUMBNAIL_MIN.height);
+  return thumbnail ? api.updateArticle(meta.dir, { thumbnail: thumbnail.path }) : meta;
 }
 
 /**

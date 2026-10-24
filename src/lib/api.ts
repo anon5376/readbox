@@ -14,6 +14,14 @@ export interface ArticleMeta {
   savedAt: string;
   status: Status;
   progress: number;
+  /** A picture from the article for the list, relative to its folder. */
+  thumbnail: string | null;
+}
+
+export interface SavedImage {
+  path: string;
+  width: number;
+  height: number;
 }
 
 export interface NewArticle {
@@ -37,10 +45,10 @@ export const api = {
   listArticles: () => invoke<ArticleMeta[]>("list_articles"),
   readArticle: (dir: string) => invoke<string>("read_article", { dir }),
   writeArticle: (dir: string, html: string) => invoke<void>("write_article", { dir, html }),
-  updateArticle: (dir: string, patch: { status?: Status; progress?: number }) =>
+  updateArticle: (dir: string, patch: { status?: Status; progress?: number; thumbnail?: string }) =>
     invoke<ArticleMeta>("update_article", { dir, patch }),
   trashArticle: (dir: string) => invoke<void>("trash_article", { dir }),
-  downloadImage: (dir: string, url: string) => invoke<string>("download_image", { dir, url }),
+  downloadImage: (dir: string, url: string) => invoke<SavedImage>("download_image", { dir, url }),
 };
 
 /** URL the webview can load for a file inside an article folder. */
