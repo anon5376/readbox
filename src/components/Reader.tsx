@@ -2,8 +2,10 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "react";
 import { api, localFileUrl, type ArticleMeta } from "../lib/api";
 import { readingMinutes, toDisplayHtml } from "../lib/extract";
-import { SIZE_RANGE, type ReaderPrefs } from "../lib/prefs";
+import type { ReaderPrefs } from "../lib/prefs";
+import { Skeleton } from "./affectui/shimmer-loader";
 import { Icon } from "./Icon";
+import { ReadingControls } from "./ReadingControls";
 
 const PROGRESS_SAVE_DELAY_MS = 600;
 
@@ -106,11 +108,11 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
     .join(" · ");
 
   return (
-    <div className="reader">
+    <div className={`reader page-${prefs.theme}`}>
       <header className="toolbar reader-toolbar" data-tauri-drag-region>
         <button className="ghost back-button" onClick={onBack} title="Back to the list (Esc)">
-          <Icon name="back" />
-          Library
+          <Icon name="chevronLeft" size={20} />
+          {archived ? "Archive" : "Unread"}
         </button>
         <div className={`toolbar-title ${titleInToolbar ? "visible" : ""}`} data-tauri-drag-region>
           {article.title}
@@ -147,6 +149,13 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
           <h1>{article.title}</h1>
           {details && <p className="reader-details">{details}</p>}
           {error && <p className="error">Couldn't open this article: {error}</p>}
+          {html === null && !error && (
+            <div className="reader-loading" aria-label="Loading the article">
+              {[100, 94, 97, 60, 0, 98, 91, 85].map((w, i) =>
+                w ? <Skeleton key={i} width={`${w}%`} height="0.9em" radius={4} /> : <div key={i} className="gap" />,
+              )}
+            </div>
+          )}
           {html !== null && (
             <div className="reader-body" onClick={onContentClick} dangerouslySetInnerHTML={{ __html: html }} />
           )}
@@ -168,69 +177,9 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
 }
 
 function PrefsPanel({ prefs, onPrefs }: { prefs: ReaderPrefs; onPrefs: Props["onPrefs"] }) {
-  const step = (delta: number) =>
-    onPrefs({ size: Math.min(SIZE_RANGE.max, Math.max(SIZE_RANGE.min, prefs.size + delta)) });
-
   return (
     <div className="popover prefs-panel" role="dialog" aria-label="Text settings">
-      <div className="prefs-row">
-        <button onClick={() => step(-2)} disabled={prefs.size <= SIZE_RANGE.min} aria-label="Smaller text">
-          <span className="size-small">A</span>
-        </button>
-        <span className="prefs-value">{prefs.size}</span>
-        <button onClick={() => step(2)} disabled={prefs.size >= SIZE_RANGE.max} aria-label="Larger text">
-          <span className="size-large">A</span>
-        </button>
-      </div>
-      <Segmented
-        value={prefs.font}
-        options={[["serif", "Serif"], ["sans", "Sans"]]}
-        onChange={(font) => onPrefs({ font })}
-      />
-      <Segmented
-        value={prefs.width}
-        options={[["narrow", "Narrow"], ["medium", "Medium"], ["wide", "Wide"]]}
-        onChange={(width) => onPrefs({ width })}
-      />
-      <div className="theme-swatches">
-        {(
-          [
-            ["system", "Auto"],
-            ["light", "Light"],
-            ["sepia", "Sepia"],
-            ["dark", "Dark"],
-          ] as const
-        ).map(([theme, label]) => (
-          <button
-            key={theme}
-            className={`swatch swatch-${theme} ${prefs.theme === theme ? "selected" : ""}`}
-            onClick={() => onPrefs({ theme })}
-          >
-            <span className="swatch-dot" />
-            {label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function Segmented<T extends string>({
-  value,
-  options,
-  onChange,
-}: {
-  value: T;
-  options: [T, string][];
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="segmented">
-      {options.map(([key, label]) => (
-        <button key={key} className={key === value ? "selected" : ""} onClick={() => onChange(key)}>
-          {label}
-        </button>
-      ))}
+      <ReadingControls prefs={prefs} onPrefs={onPrefs} />
     </div>
   );
 }

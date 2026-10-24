@@ -16,13 +16,7 @@
         "width": 1100,
         "height": 760,
         "minWidth": 640,
-        "minHeight": 480,
-        "titleBarStyle": "Overlay",
-        "hiddenTitle": true,
-        "trafficLightPosition": {
-          "x": 18,
-          "y": 20
-        }
+        "minHeight": 480
       }
     ],
     "security": {
@@ -31,7 +25,8 @@
         "enable": true,
         "scope": []
       }
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

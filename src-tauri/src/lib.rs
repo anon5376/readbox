@@ -227,6 +227,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             bridge::bridge_ready,
+            bridge::bridge_status,
             bridge::complete_save,
             get_library_dir,
             set_library_dir,

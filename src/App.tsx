@@ -131,6 +131,8 @@ export default function App() {
           articles={articles}
           pending={pending}
           libraryDir={libraryDir}
+          prefs={prefs}
+          onPrefs={updatePrefs}
           onSave={save}
           onRetry={runSave}
           onDismiss={(s) => setPending((list) => list.filter((p) => p.key !== s.key))}

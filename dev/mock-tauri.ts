@@ -77,6 +77,10 @@ let nextCallback = 1;
       }
       case "plugin:event|listen":
         return nextCallback++;
+      case "bridge_status":
+        return true;
+      case "plugin:app|version":
+        return "0.1.0";
       default:
         return null;
     }
@@ -84,11 +88,22 @@ let nextCallback = 1;
 };
 
 document.documentElement.dataset.platform = params.get("platform") ?? "macos";
-// Headless screenshots would otherwise catch dialogs mid-animation.
+// Headless screenshots would otherwise catch dialogs mid-animation. The Mac
+// window is transparent with a frosted sidebar; fake that with a wallpaper
+// and a blur, since a browser page has nothing behind it.
 const still = document.createElement("style");
-still.textContent = "*, *::before, *::after { animation: none !important; transition: none !important; }";
+still.textContent = `
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+  :root:root[data-platform="macos"] body { background: linear-gradient(160deg, #c9d6e8, #e8d5c8 60%, #d8cfe6); }
+  :root:root.dark[data-platform="macos"] body { background: linear-gradient(160deg, #1d2633, #2e2420 60%, #251f2e); }
+  :root:root[data-platform="macos"] .sidebar { background: rgba(236, 236, 240, 0.78); backdrop-filter: blur(30px) saturate(1.5); }
+  :root:root.dark[data-platform="macos"] .sidebar { background: rgba(40, 40, 44, 0.78); }
+`;
 document.head.append(still);
-localStorage.setItem("readbox.readerPrefs", JSON.stringify({ theme: params.get("theme") ?? "light" }));
+localStorage.setItem(
+  "readbox.readerPrefs",
+  JSON.stringify({ appearance: params.get("theme") ?? "light", theme: params.get("page") ?? "auto" }),
+);
 
 // Jump straight to a screen for screenshots.
 const clickWhenReady = (selector: string) => {
@@ -101,7 +116,11 @@ const clickWhenReady = (selector: string) => {
   }, 50);
 };
 if (params.get("view") === "reader") clickWhenReady(".row:not(.pending)");
-if (params.get("panel") === "settings") clickWhenReady("[data-panel=settings]");
+if (params.get("panel")?.startsWith("settings")) {
+  clickWhenReady("[data-panel=settings]");
+  const section = params.get("panel")!.split("-")[1];
+  if (section) setTimeout(() => clickWhenReady(`.settings-tabs [aria-controls=settings-${section}]`), 300);
+}
 if (params.get("panel") === "text") {
   clickWhenReady(".row:not(.pending)");
   setTimeout(() => clickWhenReady("[data-panel=text]"), 300);

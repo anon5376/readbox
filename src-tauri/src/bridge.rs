@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{mpsc, Condvar, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
@@ -25,6 +25,8 @@ const EXTENSION_ORIGINS: [&str; 3] = ["chrome-extension://", "moz-extension://",
 #[derive(Default)]
 pub struct Bridge {
     next_id: AtomicU64,
+    /// False when the port was taken (e.g. a second copy of Readbox is open).
+    listening: AtomicBool,
     waiting: Mutex<HashMap<u64, mpsc::Sender<Value>>>,
     /// Set once the frontend listens for save requests. A click in the
     /// browser right after launch waits for this instead of being lost.
@@ -38,6 +40,12 @@ impl Bridge {
         let (ready, _) = self.ready_changed.wait_timeout_while(ready, STARTUP_WAIT, |ready| !*ready).unwrap();
         *ready
     }
+}
+
+/// Whether the browser extension can reach this copy of Readbox.
+#[tauri::command]
+pub fn bridge_status(bridge: State<Bridge>) -> bool {
+    bridge.listening.load(Ordering::Relaxed)
 }
 
 /// Called by the frontend once it is listening for `save-request` events.
@@ -78,6 +86,7 @@ pub fn start(app: AppHandle) {
             return;
         }
     };
+    app.state::<Bridge>().listening.store(true, Ordering::Relaxed);
     std::thread::spawn(move || {
         for request in server.incoming_requests() {
             let app = app.clone();

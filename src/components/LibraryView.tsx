@@ -1,12 +1,16 @@
-import { open } from "@tauri-apps/plugin-dialog";
-import { openUrl, revealItemInDir } from "@tauri-apps/plugin-opener";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { useRef, useState, type FormEvent } from "react";
 import { api, localFileUrl, type ArticleMeta, type Status } from "../lib/api";
 import { readingMinutes } from "../lib/extract";
-import { isMac, shortcut } from "../lib/platform";
+import { shortcut } from "../lib/platform";
+import type { ReaderPrefs } from "../lib/prefs";
 import type { ImportJob } from "../lib/useImport";
+import { SegmentedControl } from "./affectui/segmented-control";
+import { ShimmerText } from "./affectui/shimmer-loader";
+import { TabOverload } from "./affectui/tab-overload";
 import { Icon, type IconName } from "./Icon";
 import { hostname } from "./Reader";
+import { Settings } from "./Settings";
 
 export interface PendingSave {
   key: number;
@@ -20,6 +24,8 @@ interface Props {
   articles: ArticleMeta[];
   pending: PendingSave[];
   libraryDir: string;
+  prefs: ReaderPrefs;
+  onPrefs: (patch: Partial<ReaderPrefs>) => void;
   onSave: (link: string) => void;
   onRetry: (save: PendingSave) => void;
   onDismiss: (save: PendingSave) => void;
@@ -61,24 +67,27 @@ export function LibraryView(props: Props) {
   };
   const chooseImport = () => fileInput.current?.click();
 
-  const tabButtons = (className: string) =>
-    TABS.map((t) => (
-      <button key={t.key} className={`${className} ${tab === t.key ? "selected" : ""}`} onClick={() => setTab(t.key)}>
-        <Icon name={t.icon} />
-        <span className="nav-label">{t.label}</span>
-        <span className="count">{counts[t.key] || ""}</span>
-      </button>
-    ));
-
   return (
     <div className="library">
       <aside className="sidebar">
         <div className="titlebar-space" data-tauri-drag-region />
-        <div className="brand" data-tauri-drag-region>
-          <AppMark />
-          Readbox
+        <div className="sidebar-section" data-tauri-drag-region>
+          Library
         </div>
-        <nav className="nav">{tabButtons("nav-item")}</nav>
+        <nav className="nav">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              className={`nav-item ${tab === t.key ? "selected" : ""}`}
+              onClick={() => setTab(t.key)}
+              aria-current={tab === t.key ? "page" : undefined}
+            >
+              <Icon name={t.icon} />
+              <span className="nav-label">{t.label}</span>
+              <span className="count">{counts[t.key] || ""}</span>
+            </button>
+          ))}
+        </nav>
         <div className="sidebar-spacer" data-tauri-drag-region />
         <button className="nav-item" onClick={chooseImport} disabled={importing}>
           <Icon name="import" />
@@ -91,13 +100,38 @@ export function LibraryView(props: Props) {
       </aside>
 
       <section className="main">
-        <header className="main-header" data-tauri-drag-region>
-          <div className="compact-tabs segmented">{tabButtons("")}</div>
-          <h1 data-tauri-drag-region>{tab === "unread" ? "Unread" : "Archive"}</h1>
-          <span className="header-summary" data-tauri-drag-region>
-            {summary(shown)}
-          </span>
+        <header className="main-toolbar" data-tauri-drag-region>
+          <div className="compact-tabs">
+            <SegmentedControl
+              aria-label="Show"
+              size="sm"
+              value={tab}
+              onChange={setTab}
+              options={TABS.map((t) => ({ value: t.key, label: t.label, count: counts[t.key] || undefined }))}
+            />
+          </div>
+          <div className="toolbar-heading" data-tauri-drag-region>
+            <h1 data-tauri-drag-region>{tab === "unread" ? "Unread" : "Archive"}</h1>
+            <span className="toolbar-subtitle" data-tauri-drag-region>
+              {summary(shown)}
+            </span>
+          </div>
           <div className="toolbar-spacer" data-tauri-drag-region />
+          <form className="link-field" onSubmit={submit} role="search">
+            <Icon name="link" size={15} />
+            <input
+              value={link}
+              onChange={(e) => setLink(e.target.value)}
+              placeholder="Paste a link to save"
+              aria-label="Link to save"
+              spellCheck={false}
+            />
+            {link.trim() && (
+              <button type="submit" className="link-field-save">
+                Save
+              </button>
+            )}
+          </form>
           <button className="icon-button compact-only" onClick={chooseImport} title="Import" disabled={importing}>
             <Icon name="import" />
           </button>
@@ -107,60 +141,52 @@ export function LibraryView(props: Props) {
         </header>
 
         <div className="main-scroll">
-          <div className="column">
-            <form className="save-bar" onSubmit={submit}>
-              <Icon name="link" />
-              <input
-                value={link}
-                onChange={(e) => setLink(e.target.value)}
-                placeholder="Paste a link to save it for later"
-                spellCheck={false}
-              />
-              {link.trim() ? (
-                <button type="submit" className="primary small">
-                  Save
-                </button>
-              ) : (
-                <kbd>{shortcut("V")}</kbd>
-              )}
-            </form>
+          {props.importJob && (
+            <ImportBanner job={props.importJob} onStop={props.onStopImport} onDismiss={props.onDismissImport} />
+          )}
 
-            {props.importJob && (
-              <ImportBanner job={props.importJob} onStop={props.onStopImport} onDismiss={props.onDismissImport} />
-            )}
-
-            {tab === "unread" &&
-              pending.map((save) => (
-                <div key={save.key} className={`row pending ${save.error ? "failed" : ""}`}>
-                  <div className="row-main">
-                    <div className="row-site">{hostname(save.link)}</div>
-                    <div className="row-title">{save.error ? "Couldn't save this link" : "Saving…"}</div>
-                    {save.error && <div className="row-error">{save.error}</div>}
-                  </div>
-                  {save.error && (
-                    <div className="row-actions visible">
-                      <button className="ghost" onClick={() => props.onRetry(save)}>Try again</button>
-                      <button className="ghost" onClick={() => props.onDismiss(save)}>Dismiss</button>
+          {(shown.length > 0 || pending.length > 0) && (
+            <div className="list">
+              {tab === "unread" &&
+                pending.map((save) => (
+                  <div key={save.key} className={`row pending ${save.error ? "failed" : ""}`}>
+                    <div className="row-main">
+                      <div className="row-title">
+                        {save.error ? "Couldn't save this link" : <ShimmerText>Saving…</ShimmerText>}
+                      </div>
+                      <div className="row-meta">{hostname(save.link)}</div>
+                      {save.error && <div className="row-error">{save.error}</div>}
                     </div>
-                  )}
-                </div>
+                    {save.error && (
+                      <div className="row-actions visible">
+                        <button onClick={() => props.onRetry(save)}>Try Again</button>
+                        <button className="ghost" onClick={() => props.onDismiss(save)}>
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              {shown.map((article) => (
+                <ArticleRow key={article.dir} {...props} article={article} libraryDir={libraryDir} />
               ))}
+            </div>
+          )}
 
-            {shown.length === 0 && pending.length === 0 && !props.importJob?.running && (
-              <EmptyState tab={tab} onImport={chooseImport} />
-            )}
-
-            {shown.map((article) => (
-              <ArticleRow key={article.dir} {...props} article={article} libraryDir={libraryDir} />
-            ))}
-          </div>
+          {shown.length === 0 && pending.length === 0 && !importing && (
+            <EmptyState tab={tab} onImport={chooseImport} />
+          )}
         </div>
       </section>
 
       {showSettings && (
-        <SettingsDialog
+        <Settings
           libraryDir={libraryDir}
+          prefs={props.prefs}
+          onPrefs={props.onPrefs}
           onLibraryChanged={props.onLibraryChanged}
+          onImport={chooseImport}
+          importing={importing}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -174,6 +200,7 @@ export function LibraryView(props: Props) {
           const file = e.target.files?.[0];
           e.target.value = "";
           if (file) {
+            setShowSettings(false);
             setTab("unread");
             props.onImport(file);
           }
@@ -200,6 +227,7 @@ function ArticleRow({
   };
   const started = article.progress > 0.02 && article.progress < 0.98;
   const linkOnly = article.wordCount === 0;
+  const site = article.siteName ?? hostname(article.url);
 
   return (
     <div
@@ -210,20 +238,13 @@ function ArticleRow({
       onKeyDown={(e) => e.key === "Enter" && onOpen(article)}
     >
       <div className="row-main">
-        <div className="row-site">{article.siteName ?? hostname(article.url)}</div>
         <div className="row-title">{article.title}</div>
-        {article.excerpt && <div className="row-excerpt">{article.excerpt}</div>}
-        <div className="row-details">
-          {linkOnly ? "Link only" : `${readingMinutes(article.wordCount)} min read`}
-          <span className="dot">·</span>
-          {savedLabel(article.savedAt)}
-          {started && (
-            <>
-              <span className="dot">·</span>
-              <span className="row-progress">{Math.round(article.progress * 100)}% read</span>
-            </>
-          )}
+        <div className="row-meta">
+          {site} — {linkOnly ? "link only" : `${readingMinutes(article.wordCount)} min`}
+          <span className="row-date">{savedLabel(article.savedAt)}</span>
+          {started && <span className="row-progress">{Math.round(article.progress * 100)}% read</span>}
         </div>
+        {article.excerpt && <div className="row-excerpt">{article.excerpt}</div>}
       </div>
       {article.thumbnail && (
         <img
@@ -242,7 +263,7 @@ function ArticleRow({
         >
           <Icon name={article.status === "archived" ? "unarchive" : "archive"} />
         </button>
-        <button className="icon-button" onClick={() => openUrl(article.url)} title="Open the original">
+        <button className="icon-button" onClick={() => openUrl(article.url)} title="Open the Original">
           <Icon name="external" />
         </button>
         <button className="icon-button danger" onClick={trash} title="Move to Trash">
@@ -257,38 +278,30 @@ function EmptyState({ tab, onImport }: { tab: Status; onImport: () => void }) {
   if (tab === "archived") {
     return (
       <div className="empty">
-        <div className="empty-mark">
-          <Icon name="archive" size={26} />
-        </div>
-        <h2>Nothing archived yet</h2>
+        <Icon name="archive" size={40} />
+        <h2>No Archived Articles</h2>
         <p>When you finish an article, archive it and it moves here.</p>
       </div>
     );
   }
   return (
     <div className="empty">
-      <div className="empty-mark">
-        <Icon name="inbox" size={26} />
-      </div>
-      <h2>Nothing to read yet</h2>
-      <p>Save articles now, read them later, even offline. Three ways to start:</p>
+      <TabOverload className="empty-art" label="Overlapping browser windows full of pages" />
+      <h2>Nothing to Read Yet</h2>
+      <p>Too many tabs open? Save them here and read them later, even offline.</p>
       <ul className="tips">
         <li>
           <Icon name="link" />
-          <span>
-            <strong>Paste a link</strong> into the box above, or press {shortcut("V")} anywhere in this window.
-          </span>
+          <span>Paste a link in the toolbar, or press {shortcut("V")} anywhere in this window.</span>
         </li>
         <li>
-          <Icon name="puzzle" />
-          <span>
-            <strong>Use the browser button</strong> to save the page you're reading.
-          </span>
+          <Icon name="globe" />
+          <span>Click the Readbox button in your browser to save the page you're on.</span>
         </li>
         <li>
           <Icon name="import" />
           <span>
-            <strong>Bring your old list</strong> from Pocket, Omnivore or Instapaper.{" "}
+            Bring your list from Pocket, Omnivore or Instapaper.{" "}
             <button className="link-button" onClick={onImport}>
               Import…
             </button>
@@ -304,7 +317,9 @@ function ImportBanner({ job, onStop, onDismiss }: { job: ImportJob; onStop: () =
     return (
       <div className="import-banner failed">
         <div className="import-text">{job.error}</div>
-        <button className="ghost" onClick={onDismiss}>Dismiss</button>
+        <button className="ghost" onClick={onDismiss}>
+          Dismiss
+        </button>
       </div>
     );
   }
@@ -334,101 +349,19 @@ function ImportBanner({ job, onStop, onDismiss }: { job: ImportJob; onStop: () =
       {job.running ? (
         <button onClick={onStop}>Stop</button>
       ) : (
-        <button className="ghost" onClick={onDismiss}>Dismiss</button>
+        <button className="ghost" onClick={onDismiss}>
+          Dismiss
+        </button>
       )}
     </div>
   );
 }
 
-function SettingsDialog({
-  libraryDir,
-  onLibraryChanged,
-  onClose,
-}: {
-  libraryDir: string;
-  onLibraryChanged: () => void;
-  onClose: () => void;
-}) {
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  const choose = async () => {
-    const picked = await open({ directory: true, defaultPath: libraryDir, title: "Choose library folder" });
-    if (typeof picked !== "string") return;
-    try {
-      await api.setLibraryDir(picked);
-      onLibraryChanged();
-    } catch (e) {
-      setError(String(e));
-    }
-  };
-
-  return (
-    <div className="dialog-backdrop" onClick={onClose}>
-      <div className="dialog" role="dialog" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
-        <header className="dialog-header">
-          <h2>Settings</h2>
-          <button className="icon-button" onClick={onClose} title="Close (Esc)">
-            <Icon name="close" />
-          </button>
-        </header>
-
-        <section className="dialog-section">
-          <div className="settings-label">Library folder</div>
-          <div className="settings-path">
-            <Icon name="folder" />
-            <span>{libraryDir}</span>
-          </div>
-          <div className="settings-buttons">
-            <button onClick={choose}>Change folder…</button>
-            <button onClick={() => revealItemInDir(libraryDir)}>{isMac ? "Show in Finder" : "Show in Explorer"}</button>
-          </div>
-          <p className="settings-hint">
-            Everything you save lives in this folder as plain files. Put it inside Dropbox, iCloud Drive or OneDrive to
-            sync between computers. Changing it doesn't move existing articles.
-          </p>
-          {error && <p className="error">{error}</p>}
-        </section>
-
-        <section className="dialog-section about">
-          <AppMark />
-          <div>
-            <div className="settings-label">Readbox 0.1</div>
-            <p className="settings-hint">
-              Free and open source. No account, no tracking.{" "}
-              <button className="link-button" onClick={() => openUrl("https://github.com/anon5376/readbox")}>
-                Source code
-              </button>
-            </p>
-          </div>
-        </section>
-      </div>
-    </div>
-  );
-}
-
-/** The app's mark: a tray holding a page with a folded corner. */
-export function AppMark() {
-  return (
-    <svg className="app-mark" viewBox="0 0 32 32" aria-hidden="true">
-      <rect width="32" height="32" rx="8" fill="var(--accent)" />
-      <path d="M10.5 6.5h8l3 3V19h-11z" fill="var(--mark-paper)" />
-      <path d="M18.5 6.5v3h3" fill="none" stroke="var(--accent)" strokeWidth="1.1" strokeLinejoin="round" />
-      <path d="M6.5 16.5h5.2l1.6 2.6h5.4l1.6-2.6h5.2V25.5h-19z" fill="var(--mark-paper)" />
-    </svg>
-  );
-}
-
 function summary(articles: ArticleMeta[]): string {
-  if (articles.length === 0) return "";
+  if (articles.length === 0) return "No articles";
   const minutes = articles.reduce((sum, a) => sum + (a.wordCount ? readingMinutes(a.wordCount) : 0), 0);
   const time = minutes >= 60 ? `${Math.floor(minutes / 60)} h ${minutes % 60} min` : `${minutes} min`;
-  return `${articles.length} ${articles.length === 1 ? "article" : "articles"} · ${time}`;
+  return `${articles.length} ${articles.length === 1 ? "article" : "articles"}, ${time}`;
 }
 
 function savedLabel(iso: string): string {
@@ -436,6 +369,7 @@ function savedLabel(iso: string): string {
   const days = Math.floor((startOfDay(new Date()) - startOfDay(saved)) / 86_400_000);
   if (days <= 0) return "Today";
   if (days === 1) return "Yesterday";
+  if (days < 7) return saved.toLocaleDateString(undefined, { weekday: "long" });
   return saved.toLocaleDateString(undefined, { month: "short", day: "numeric", year: days > 300 ? "numeric" : undefined });
 }
 
