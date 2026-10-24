@@ -78,6 +78,7 @@ export default function App() {
       const outcome = await save(url, html ?? undefined);
       await invoke("complete_save", { id, outcome });
     });
+    unlisten.then(() => invoke("bridge_ready"));
     return () => {
       unlisten.then((stop) => stop());
     };

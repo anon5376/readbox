@@ -10,22 +10,50 @@ export interface ExtractedArticle {
   wordCount: number;
 }
 
+const NOT_AN_ARTICLE = "This page doesn't look like an article, so it wasn't saved.";
+
+/**
+ * Mail apps can show private messages that look like articles, so they are
+ * never saved, whatever the page contains.
+ */
+const PRIVATE_HOSTS = [
+  "mail.proton.me",
+  "mail.google.com",
+  "outlook.live.com",
+  "outlook.office.com",
+  "outlook.office365.com",
+  "mail.yahoo.com",
+  "app.fastmail.com",
+  "www.icloud.com",
+  "app.tuta.com",
+];
+
+/** What a cleaned page needs to count as an article rather than an inbox, feed or homepage. */
+const ARTICLE_RULES = { minWords: 150, minParagraphs: 3, paragraphChars: 80, maxLinkShare: 0.5 };
+
 /**
  * Turns a full web page into a clean article: Readability (the engine behind
  * Firefox's reader view) finds the content, then DOMPurify strips anything
- * that could run code or restyle the reader.
+ * that could run code or restyle the reader. Pages that aren't articles are
+ * refused, so a click on an inbox or a dashboard doesn't save private data.
  */
 export function extractArticle(pageHtml: string, pageUrl: string): ExtractedArticle {
+  if (PRIVATE_HOSTS.includes(new URL(pageUrl).hostname)) {
+    throw new Error("Readbox doesn't save pages from email apps.");
+  }
   const doc = new DOMParser().parseFromString(pageHtml, "text/html");
   setBaseUrl(doc, pageUrl);
 
   const parsed = new Readability(doc).parse();
   if (!parsed?.content) {
-    throw new Error("Couldn't find an article on that page.");
+    throw new Error(NOT_AN_ARTICLE);
   }
 
   const html = sanitize(parsed.content);
   const text = parsed.textContent ?? "";
+  if (!looksLikeArticle(html, text)) {
+    throw new Error(NOT_AN_ARTICLE);
+  }
   return {
     title: clean(parsed.title) ?? new URL(pageUrl).hostname,
     byline: clean(parsed.byline),
@@ -34,6 +62,26 @@ export function extractArticle(pageHtml: string, pageUrl: string): ExtractedArti
     html: pickSingleImageSources(html),
     wordCount: text.split(/\s+/).filter(Boolean).length,
   };
+}
+
+/**
+ * Readability's own `isProbablyReaderable` rejects some essays and accepts
+ * news homepages, so this looks at the cleaned result instead: real
+ * paragraphs, enough words, and not mostly links.
+ */
+function looksLikeArticle(html: string, text: string): boolean {
+  const doc = parseFragment(html);
+  const words = text.split(/\s+/).filter(Boolean).length;
+  const paragraphs = [...doc.querySelectorAll("p")].filter(
+    (p) => (p.textContent ?? "").trim().length >= ARTICLE_RULES.paragraphChars,
+  ).length;
+  const linkChars = [...doc.querySelectorAll("a")].reduce((sum, a) => sum + (a.textContent ?? "").length, 0);
+  const linkShare = linkChars / Math.max(1, text.length);
+  return (
+    words >= ARTICLE_RULES.minWords &&
+    paragraphs >= ARTICLE_RULES.minParagraphs &&
+    linkShare <= ARTICLE_RULES.maxLinkShare
+  );
 }
 
 /** Readability resolves relative links and images against the document's base URL. */

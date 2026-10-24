@@ -60,6 +60,45 @@ describe("extractArticle", () => {
   });
 });
 
+describe("refusing pages that aren't articles", () => {
+  const notAnArticle = /doesn't look like an article/;
+
+  it("refuses an inbox-style list", () => {
+    const rows = Array.from(
+      { length: 60 },
+      (_, i) => `<div class="item"><span>Sender ${i}</span> <span>Subject line ${i} about something</span></div>`,
+    ).join("");
+    const inbox = `<html><head><title>Inbox</title></head><body><div role="main">${rows}</div></body></html>`;
+    expect(() => extractArticle(inbox, "https://webmail.example.com/inbox")).toThrow(notAnArticle);
+  });
+
+  it("refuses a login screen", () => {
+    const login = "<html><body><form><p>Loading your mail</p><input name=user></form></body></html>";
+    expect(() => extractArticle(login, "https://example.com/login")).toThrow(notAnArticle);
+  });
+
+  it("refuses a page that is mostly links", () => {
+    const links = Array.from(
+      { length: 40 },
+      (_, i) => `<p><a href="/story/${i}">Story number ${i} with a long and descriptive headline that goes on</a></p>`,
+    ).join("");
+    const feed = `<html><body><main>${links}</main></body></html>`;
+    expect(() => extractArticle(feed, "https://news.example.com/")).toThrow(notAnArticle);
+  });
+
+  it("never saves pages from email apps", () => {
+    expect(() => extractArticle(page, "https://mail.proton.me/u/0/inbox")).toThrow(/email apps/);
+    expect(() => extractArticle(page, "https://mail.google.com/mail/u/0/")).toThrow(/email apps/);
+  });
+
+  it("accepts essays written with line breaks instead of paragraphs", () => {
+    const essay = `<html><head><title>An Essay</title></head><body><table><tr><td><font>${
+      `${paragraph}<br><br>`.repeat(8)
+    }</font></td></tr></table></body></html>`;
+    expect(extractArticle(essay, "https://essays.example.com/essay.html").wordCount).toBeGreaterThan(500);
+  });
+});
+
 describe("image handling", () => {
   const html =
     '<p><img src="https://a.com/1.png"><img src="https://a.com/1.png"><img src="data:image/png;base64,xx"><img src="https://a.com/2.jpg"></p>';

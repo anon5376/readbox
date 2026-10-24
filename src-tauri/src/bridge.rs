@@ -11,7 +11,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::io::Read;
 use std::sync::atomic::{AtomicU64, Ordering};
-use std::sync::{mpsc, Mutex};
+use std::sync::{mpsc, Condvar, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager, State};
 use tiny_http::{Header, Method, Request, Response, Server};
@@ -19,12 +19,32 @@ use tiny_http::{Header, Method, Request, Response, Server};
 pub const PORT: u16 = 47612;
 const MAX_BODY_BYTES: u64 = 30 * 1024 * 1024;
 const SAVE_TIMEOUT: Duration = Duration::from_secs(120);
+const STARTUP_WAIT: Duration = Duration::from_secs(20);
 const EXTENSION_ORIGINS: [&str; 3] = ["chrome-extension://", "moz-extension://", "safari-web-extension://"];
 
 #[derive(Default)]
 pub struct Bridge {
     next_id: AtomicU64,
     waiting: Mutex<HashMap<u64, mpsc::Sender<Value>>>,
+    /// Set once the frontend listens for save requests. A click in the
+    /// browser right after launch waits for this instead of being lost.
+    ready: Mutex<bool>,
+    ready_changed: Condvar,
+}
+
+impl Bridge {
+    fn wait_until_ready(&self) -> bool {
+        let ready = self.ready.lock().unwrap();
+        let (ready, _) = self.ready_changed.wait_timeout_while(ready, STARTUP_WAIT, |ready| !*ready).unwrap();
+        *ready
+    }
+}
+
+/// Called by the frontend once it is listening for `save-request` events.
+#[tauri::command]
+pub fn bridge_ready(bridge: State<Bridge>) {
+    *bridge.ready.lock().unwrap() = true;
+    bridge.ready_changed.notify_all();
 }
 
 #[derive(Deserialize)]
@@ -95,6 +115,9 @@ fn handle(app: &AppHandle, mut request: Request) {
     }
 
     let bridge = app.state::<Bridge>();
+    if !bridge.wait_until_ready() {
+        return respond(request, 503, json!({ "ok": false, "error": "Readbox is still starting. Try again in a moment." }));
+    }
     let id = bridge.next_id.fetch_add(1, Ordering::Relaxed);
     let (reply, outcome) = mpsc::channel();
     bridge.waiting.lock().unwrap().insert(id, reply);
