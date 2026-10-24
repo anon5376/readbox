@@ -1,4 +1,5 @@
 import { SIZE_RANGE, type PageTheme, type ReaderPrefs } from "../lib/prefs";
+import { isMac } from "../lib/platform";
 import { SegmentedControl } from "./affectui/segmented-control";
 
 const PAGES: [PageTheme, string][] = [
@@ -39,8 +40,9 @@ export function ReadingControls({
         value={prefs.font}
         onChange={(font) => onPrefs({ font })}
         options={[
-          { value: "serif", label: "New York" },
-          { value: "sans", label: "San Francisco" },
+          // Named after the faces each system actually shows (see --serif and --sans in App.css).
+          { value: "serif", label: isMac ? "New York" : "Georgia" },
+          { value: "sans", label: isMac ? "San Francisco" : "Segoe UI" },
         ]}
       />
       <SegmentedControl

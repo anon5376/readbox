@@ -113,6 +113,7 @@ npm test             # frontend tests
 npm run design       # the interface with sample articles at http://localhost:1430/design-preview.html
 scripts/screenshots.sh out/   # screenshots of every screen (needs npm run design and Chrome)
 npm run ui-check     # every button reacts to the pointer; reader widths differ (needs npm run design and Chrome)
+scripts/app-screenshot.sh app.png   # the real Mac window, on an empty test library (needs a debug build)
 cd src-tauri && cargo test   # library/storage tests
 ```
 

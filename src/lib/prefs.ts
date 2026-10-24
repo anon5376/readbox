@@ -1,3 +1,4 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect, useState } from "react";
 
 /** The whole app: follow the system, or force light or dark. */
@@ -60,6 +61,18 @@ export function useReaderPrefs() {
     systemDark.addEventListener("change", apply);
     return () => systemDark.removeEventListener("change", apply);
   }, [prefs]);
+
+  // The window itself follows the app's choice too: its title bar on Windows, and on a Mac the
+  // frosted sidebar material, which would otherwise stay light under dark text.
+  useEffect(() => {
+    try {
+      getCurrentWindow()
+        .setTheme(prefs.appearance === "system" ? null : prefs.appearance)
+        .catch(() => {});
+    } catch {
+      // Not in the app (the design preview): nothing to theme.
+    }
+  }, [prefs.appearance]);
 
   const update = (patch: Partial<ReaderPrefs>) => setPrefs((p) => ({ ...p, ...patch }));
   return [prefs, update] as const;
