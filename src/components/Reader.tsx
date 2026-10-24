@@ -4,7 +4,7 @@ import { api, localFileUrl, type ArticleMeta } from "../lib/api";
 import { readingMinutes, toDisplayHtml } from "../lib/extract";
 import type { ReaderPrefs } from "../lib/prefs";
 import { Icon } from "./Icon";
-import { ScrollProgress, type Section } from "./rareui/scroll-progress";
+import { ScrollProgress } from "./rareui/scroll-progress";
 import { ReadingControls } from "./ReadingControls";
 
 const PROGRESS_SAVE_DELAY_MS = 600;
@@ -22,7 +22,6 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
-  const [sections, setSections] = useState<Section[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
   const pendingProgress = useRef<number | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
@@ -47,7 +46,6 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
     const el = scroller.current;
     if (html === null || !el) return;
     if (article.progress > 0) el.scrollTop = article.progress * (el.scrollHeight - el.clientHeight);
-    setSections(findSections(el));
     // Only on first render of this article's text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html]);
@@ -111,7 +109,6 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
             <ScrollProgress
               key={article.dir}
               scroller={scroller}
-              sections={sections}
               minutes={article.wordCount ? readingMinutes(article.wordCount) : 0}
             />
           )}
@@ -178,19 +175,6 @@ function PrefsPanel({ prefs, onPrefs }: { prefs: ReaderPrefs; onPrefs: Props["on
       <ReadingControls prefs={prefs} onPrefs={onPrefs} />
     </div>
   );
-}
-
-/** The article's own headings, as places to jump to. Uses the top level the article has (h2, else h3). */
-function findSections(root: HTMLElement): Section[] {
-  const body = root.querySelector(".reader-body");
-  if (!body) return [];
-  const level = body.querySelector("h2") ? "h2" : "h3";
-  return [...body.querySelectorAll<HTMLElement>(level)]
-    .map((heading, i) => {
-      heading.id ||= `section-${i + 1}`;
-      return { id: heading.id, label: heading.textContent?.trim() ?? "" };
-    })
-    .filter((s) => s.label);
 }
 
 export function hostname(url: string): string {

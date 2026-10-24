@@ -145,7 +145,7 @@ function Reading({ prefs, onPrefs }: Props) {
     <>
       <Group>
         <div className="settings-preview" data-page={prefs.theme}>
-          <div className={`settings-preview-text font-${prefs.font}`} style={{ fontSize: `${Math.round(prefs.size * 0.8)}px` }}>
+          <div className={`settings-preview-text font-${prefs.font} width-${prefs.width}`} style={{ fontSize: `${Math.round(prefs.size * 0.8)}px` }}>
             The best way to read later is to actually read it. Here's how your articles will look.
           </div>
         </div>

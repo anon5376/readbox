@@ -34,6 +34,7 @@
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --toolbar-height: 52px;
   --ease: cubic-bezier(0.2, 0, 0, 1);
+  --hover: rgba(0, 0, 0, 0.05);
   color-scheme: light;
 }
 
@@ -59,6 +60,7 @@
   --glass: rgba(52, 52, 56, 0.66);
   --glass-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.13), 0 6px 22px rgba(0, 0, 0, 0.35), inset 0 1px 0.5px rgba(255, 255, 255, 0.1);
   --sheet: rgba(40, 40, 43, 0.88);
+  --hover: rgba(255, 255, 255, 0.08);
   color-scheme: dark;
 }
 
@@ -172,6 +174,12 @@ input,
   cursor: default;
 }
 
+/* Every button tints under the pointer: a wash over whatever its own background is. Buttons with
+   their own hover rule (ghost, icon) replace it, since those set the whole background. */
+:where(button:hover:not(:disabled)) {
+  background-image: linear-gradient(var(--hover), var(--hover));
+}
+
 :where(button:active:not(:disabled)) {
   background: var(--fill-strong);
 }
@@ -196,6 +204,11 @@ button.primary {
   background: var(--accent);
   border-color: transparent;
   color: var(--accent-text);
+}
+
+button.primary:hover:not(:disabled) {
+  background-image: none;
+  opacity: 0.86;
 }
 
 button.primary:active:not(:disabled) {
@@ -232,6 +245,12 @@ button.primary:active:not(:disabled) {
   background: none;
   box-shadow: none;
   color: var(--link);
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 button:focus-visible,
@@ -297,6 +316,12 @@ kbd {
   --ui-seg-accent-soft: var(--accent-soft);
   --ui-seg-focus: var(--accent-soft);
   font-family: var(--sans);
+}
+
+/* Unchosen segments tint under the pointer; underline tabs only darken their text. */
+.ui-seg:not([data-variant="underline"]) .ui-seg__opt:not([data-active]):not(:disabled):hover {
+  background: var(--fill);
+  border-radius: var(--ui-seg-r);
 }
 
 /* Underline tabs sit on a rule as wide as the sheet's content. */
@@ -377,6 +402,10 @@ kbd {
   color: var(--label);
   border-radius: 10px;
   font-weight: 400;
+}
+
+.nav-item:hover:not(:disabled) {
+  background: var(--fill);
 }
 
 .nav-item:active:not(:disabled) {
@@ -929,6 +958,18 @@ kbd {
   line-height: 1.55;
 }
 
+.settings-preview-text {
+  margin: 0 auto;
+}
+
+.settings-preview-text.width-narrow {
+  max-width: 64%;
+}
+
+.settings-preview-text.width-medium {
+  max-width: 80%;
+}
+
 .settings-preview-text.font-serif {
   font-family: var(--serif);
 }
@@ -1059,6 +1100,15 @@ kbd {
   box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18);
 }
 
+.page-swatch:hover:not(:disabled) {
+  background: none;
+  color: var(--label);
+}
+
+.page-swatch:hover .page-swatch-chip {
+  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.18), 0 0 0 3px var(--fill-strong);
+}
+
 .page-swatch[aria-checked="true"] {
   color: var(--label);
 }
@@ -1107,6 +1157,15 @@ kbd {
 
 .reader.page-sepia {
   --glass: rgba(253, 248, 238, 0.7);
+}
+
+.reader.page-light,
+.reader.page-sepia {
+  --hover: rgba(0, 0, 0, 0.05);
+}
+
+.reader.page-dark {
+  --hover: rgba(255, 255, 255, 0.08);
 }
 
 .reader.page-dark {
@@ -1200,6 +1259,11 @@ kbd {
   color: var(--page-text, var(--label));
 }
 
+/* Keep the glass under the pointer and wash over it. */
+.reader-toolbar .back-button.ghost:hover:not(:disabled) {
+  background: linear-gradient(var(--hover), var(--hover)), var(--glass);
+}
+
 
 
 .toolbar-center {
@@ -1250,16 +1314,18 @@ kbd {
   overflow-wrap: break-word;
 }
 
+/* A measure in letters, capped at a share of the window so the three stay apart even with large
+   text in a small window. */
 .reader-article.width-narrow {
-  max-width: calc(29em + 64px);
+  max-width: min(calc(29em + 64px), 64%);
 }
 
 .reader-article.width-medium {
-  max-width: calc(34em + 64px);
+  max-width: min(calc(34em + 64px), 80%);
 }
 
 .reader-article.width-wide {
-  max-width: calc(42em + 64px);
+  max-width: min(calc(42em + 64px), 100%);
 }
 
 .reader-article.font-serif {
@@ -1523,8 +1589,13 @@ kbd {
   font-weight: 400;
 }
 
+.ui-bounce-item:hover:not(:disabled),
 .ui-bounce-item:active:not(:disabled) {
   background: var(--fill);
+}
+
+.ui-bounce-item[data-active="true"]:hover {
+  background: transparent;
 }
 
 .ui-bounce-label {
@@ -1564,7 +1635,12 @@ kbd {
   color: var(--secondary);
 }
 
-.ui-del-trigger:hover:not(:disabled),
+.ui-del-trigger:hover:not(:disabled) {
+  background: var(--fill);
+  border-radius: 999px;
+  color: var(--danger);
+}
+
 .ui-del[data-open="true"] .ui-del-trigger {
   background: transparent;
   color: var(--danger);
@@ -1627,6 +1703,11 @@ kbd {
   color: var(--secondary);
 }
 
+.ui-del-choice:hover:not(:disabled) {
+  background: var(--fill-strong);
+  color: var(--label);
+}
+
 .ui-del-choice.confirm {
   color: var(--danger);
 }
@@ -1635,62 +1716,28 @@ kbd {
   stroke-width: 2.5;
 }
 
-/* Scroll Progress: a ring and the current section, opening into the list of sections. */
+/* Scroll Progress: a ring that fills as you read, and the minutes left. */
 .ui-progress {
-  position: relative;
-  width: 100%;
   display: flex;
   justify-content: center;
-}
-
-.ui-progress-measure {
-  position: absolute;
-  visibility: hidden;
-  pointer-events: none;
-}
-
-.ui-progress-surface {
-  position: absolute;
-  top: 9px;
-  left: 50%;
-  z-index: 6;
-  overflow: hidden;
-  transform: translateX(-50%);
-  background: var(--glass);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  backdrop-filter: blur(24px) saturate(1.8);
-  color: var(--page-text, var(--label));
-  transition:
-    width 0.28s var(--ease),
-    height 0.28s var(--ease),
-    border-radius 0.28s var(--ease);
-}
-
-.ui-progress-surface[data-open="true"] {
-  background: var(--page, var(--sheet));
-  box-shadow: var(--shadow);
+  padding-top: 9px;
 }
 
 .ui-progress-pill {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 0;
   height: 34px;
   padding: 0 14px 0 8px;
-  border: none;
-  border-radius: 0;
-  background: transparent;
-  box-shadow: none;
-  color: inherit;
+  border-radius: 999px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  color: var(--page-text, var(--label));
   font-size: 12.5px;
   font-weight: 500;
   white-space: nowrap;
-}
-
-.ui-progress-pill:active:not(:disabled) {
-  background: transparent;
 }
 
 .ui-progress-ring {
@@ -1713,75 +1760,6 @@ kbd {
   stroke: currentColor;
   stroke-linecap: round;
   transition: stroke-dashoffset 0.15s linear;
-}
-
-.ui-progress-label {
-  max-width: 320px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  animation: fade-in 0.2s ease-out;
-}
-
-.ui-progress-layer {
-  position: absolute;
-  top: 0;
-  left: 0;
-  transition: opacity 0.18s ease-out;
-}
-
-.ui-progress-layer[data-shown="false"] {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.ui-progress-list {
-  display: flex;
-  flex-direction: column;
-  width: max-content;
-  max-width: 420px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 6px;
-}
-
-.ui-progress-option {
-  justify-content: flex-start;
-  gap: 10px;
-  min-height: 30px;
-  padding: 0 12px;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  box-shadow: none;
-  color: var(--page-muted, var(--secondary));
-  font-size: 12.5px;
-  font-weight: 500;
-  text-align: left;
-}
-
-.ui-progress-option:hover:not(:disabled),
-.ui-progress-option[data-active="true"] {
-  background: var(--page-rule, var(--fill));
-  color: var(--page-text, var(--label));
-}
-
-.ui-progress-dot {
-  width: 5px;
-  height: 5px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.35;
-}
-
-.ui-progress-option[data-active="true"] .ui-progress-dot {
-  opacity: 1;
-}
-
-.ui-progress-option-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
 @media (prefers-reduced-motion: reduce) {
