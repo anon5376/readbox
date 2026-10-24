@@ -1,7 +1,8 @@
 /*
- * Readbox, Apple-native: system fonts (San Francisco, New York), the system
- * accent colour, a frosted sidebar on the Mac and macOS label/fill/separator
- * colours. Light values first, dark under .dark (set from Settings → Appearance).
+ * Readbox, in the current macOS style: system fonts (San Francisco, New York),
+ * the system accent colour, a floating glass sidebar, capsule-shaped controls
+ * and glass toolbar buttons that content scrolls under. Light values first,
+ * dark under .dark (set from Settings → Appearance).
  */
 
 :root {
@@ -23,6 +24,9 @@
   --success: #34c759;
   --link: var(--accent);
   --shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.12), 0 22px 70px rgba(0, 0, 0, 0.22), 0 4px 14px rgba(0, 0, 0, 0.08);
+  --glass: rgba(255, 255, 255, 0.68);
+  --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 6px 22px rgba(0, 0, 0, 0.08), inset 0 1px 0.5px rgba(255, 255, 255, 0.85);
+  --sheet: rgba(255, 255, 255, 0.84);
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI Variable Text", "Segoe UI", sans-serif;
   --serif: ui-serif, "New York", "Iowan Old Style", "Charter", Georgia, serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -56,6 +60,9 @@
   --danger: #ff453a;
   --success: #30d158;
   --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 22px 70px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.3);
+  --glass: rgba(52, 52, 56, 0.66);
+  --glass-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.13), 0 6px 22px rgba(0, 0, 0, 0.35), inset 0 1px 0.5px rgba(255, 255, 255, 0.1);
+  --sheet: rgba(40, 40, 43, 0.86);
   color-scheme: dark;
 }
 
@@ -108,9 +115,9 @@ input,
   color: var(--label);
   background: var(--control);
   border: 0.5px solid var(--control-border);
-  border-radius: 6px;
-  padding: 3px 11px;
-  min-height: 24px;
+  border-radius: 999px;
+  padding: 4px 14px;
+  min-height: 28px;
   box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.08);
   cursor: default;
 }
@@ -147,8 +154,8 @@ button.primary:active:not(:disabled) {
 }
 
 .icon-button {
-  width: 30px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   min-height: 0;
   padding: 0;
   border-color: transparent;
@@ -218,7 +225,15 @@ kbd {
   align-self: stretch;
 }
 
-/* affectUI segmented control, in macOS colours */
+/* Glass: a translucent, blurred surface with a bright top edge. */
+.glass {
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+}
+
+/* affectUI segmented control, in macOS colours, capsule-shaped */
 .ui-seg {
   --ui-seg-tray: var(--fill-strong);
   --ui-seg-pill: var(--control);
@@ -234,9 +249,13 @@ kbd {
   font-family: var(--sans);
 }
 
+.ui-seg {
+  --ui-seg-r: 999px;
+}
+
 .ui-seg[data-size="sm"] {
-  --ui-seg-h: 24px;
-  --ui-seg-r: 7px;
+  --ui-seg-h: 28px;
+  --ui-seg-r: 999px;
   --ui-seg-fs: 12.5px;
 }
 
@@ -253,22 +272,34 @@ kbd {
 
 .library {
   display: grid;
-  grid-template-columns: 210px 1fr;
+  grid-template-columns: 228px 1fr;
+  overflow: hidden;
 }
 
+/* A floating panel inset from the window edge. The wide spread shadow paints
+   the window colour around it, so on the Mac only the rounded panel shows the
+   frosted material macOS draws behind the transparent window. */
 .sidebar {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  margin: 8px 0 8px 8px;
   padding: 0 10px 10px;
+  border-radius: 18px;
   background: var(--sidebar);
-  border-right: 0.5px solid var(--separator);
+  box-shadow:
+    0 0 0 0.5px var(--separator),
+    0 4px 18px rgba(0, 0, 0, 0.06),
+    0 0 0 60px var(--window);
   min-height: 0;
 }
 
-/* macOS draws the frosted sidebar material behind the transparent window. */
 :root[data-platform="macos"] .sidebar {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.28);
+}
+
+:root.dark[data-platform="macos"] .sidebar {
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .titlebar-space {
@@ -277,7 +308,7 @@ kbd {
 }
 
 :root[data-platform="macos"] .titlebar-space {
-  height: var(--toolbar-height);
+  height: 44px;
 }
 
 .sidebar-section {
@@ -297,13 +328,13 @@ kbd {
   justify-content: flex-start;
   gap: 7px;
   width: 100%;
-  height: 28px;
-  padding: 0 8px;
+  height: 32px;
+  padding: 0 10px;
   border: none;
   background: transparent;
   box-shadow: none;
   color: var(--label);
-  border-radius: 6px;
+  border-radius: 10px;
   font-weight: 400;
 }
 
@@ -335,6 +366,9 @@ kbd {
 }
 
 .main {
+  /* Above the sidebar, whose frame-coloured shadow reaches under this column. */
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
@@ -346,10 +380,9 @@ kbd {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: var(--toolbar-height);
-  padding: 0 14px 0 20px;
+  height: calc(var(--toolbar-height) + 8px);
+  padding: 8px 16px 0 24px;
   flex-shrink: 0;
-  border-bottom: 0.5px solid var(--separator);
 }
 
 .toolbar-heading {
@@ -361,9 +394,10 @@ kbd {
 
 .toolbar-heading h1 {
   margin: 0;
-  font-size: 15px;
+  font-size: 18px;
   font-weight: 700;
   line-height: 1.15;
+  letter-spacing: -0.01em;
 }
 
 .toolbar-subtitle {
@@ -376,16 +410,17 @@ kbd {
   display: flex;
   align-items: center;
   gap: 5px;
-  width: min(280px, 38vw);
-  height: 28px;
-  padding: 0 4px 0 8px;
-  border-radius: 7px;
-  background: var(--fill);
+  width: min(300px, 40vw);
+  height: 34px;
+  padding: 0 5px 0 12px;
+  border-radius: 999px;
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
   color: var(--secondary);
 }
 
 .link-field:focus-within {
-  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 0.5px var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 0.5px var(--accent), var(--glass-shadow);
 }
 
 .link-field input {
@@ -404,13 +439,13 @@ kbd {
 }
 
 .link-field-save {
-  min-height: 20px;
-  padding: 0 8px;
+  min-height: 24px;
+  padding: 0 11px;
   font-size: 12px;
   background: var(--accent);
   color: var(--accent-text);
   border: none;
-  border-radius: 5px;
+  border-radius: 999px;
   box-shadow: none;
 }
 
@@ -427,7 +462,7 @@ kbd {
 /* Rows, Mail-style */
 
 .list {
-  padding: 4px 0 40px;
+  padding: 4px 12px 40px;
 }
 
 .row {
@@ -435,16 +470,23 @@ kbd {
   display: flex;
   gap: 14px;
   align-items: flex-start;
-  padding: 11px 20px 12px;
+  padding: 12px 12px 13px;
+  border-radius: 14px;
 }
 
 .row::after {
   content: "";
   position: absolute;
-  left: 20px;
-  right: 0;
+  left: 12px;
+  right: 12px;
   bottom: 0;
   border-bottom: 0.5px solid var(--separator);
+}
+
+.row:last-child::after,
+.row:hover::after,
+.row:has(+ .row:hover)::after {
+  opacity: 0;
 }
 
 .row:hover {
@@ -512,10 +554,10 @@ kbd {
 }
 
 .row-thumb {
-  width: 58px;
-  height: 58px;
+  width: 64px;
+  height: 64px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 12px;
   flex-shrink: 0;
   margin-top: 2px;
   background: var(--fill);
@@ -524,14 +566,16 @@ kbd {
 
 .row-actions {
   position: absolute;
-  top: 8px;
-  right: 14px;
+  top: 10px;
+  right: 12px;
   display: flex;
-  gap: 1px;
+  gap: 0;
   padding: 2px;
-  background: var(--window);
-  border-radius: 8px;
-  box-shadow: var(--shadow);
+  background: var(--glass);
+  border-radius: 999px;
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s;
@@ -606,14 +650,14 @@ kbd {
   text-align: left;
   background: var(--group);
   border: 0.5px solid var(--separator);
-  border-radius: 10px;
+  border-radius: 16px;
 }
 
 .tips li {
   display: flex;
   gap: 10px;
   align-items: flex-start;
-  padding: 10px 12px;
+  padding: 12px 14px;
   color: var(--label);
 }
 
@@ -632,9 +676,9 @@ kbd {
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  margin: 12px 20px 4px;
+  margin: 12px 24px 4px;
   padding: 12px 14px;
-  border-radius: 10px;
+  border-radius: 16px;
   background: var(--group);
   border: 0.5px solid var(--separator);
 }
@@ -668,7 +712,7 @@ kbd {
   align-items: flex-start;
   justify-content: center;
   padding: 60px 24px 24px;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.14);
   animation: fade-in 0.15s ease-out;
 }
 
@@ -677,14 +721,16 @@ kbd {
   max-height: calc(100vh - 84px);
   display: flex;
   flex-direction: column;
-  background: var(--window);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
+  background: var(--sheet);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
+  border-radius: 26px;
+  box-shadow: var(--shadow), inset 0 1px 0.5px rgba(255, 255, 255, 0.5);
   animation: sheet-in 0.2s cubic-bezier(0.2, 0.9, 0.3, 1);
 }
 
 :root.dark .dialog {
-  background: #2a2a2a;
+  box-shadow: var(--shadow), inset 0 1px 0.5px rgba(255, 255, 255, 0.08);
 }
 
 .settings-header {
@@ -692,7 +738,7 @@ kbd {
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: 12px 12px 0;
+  padding: 16px 16px 0;
 }
 
 .settings-header h2 {
@@ -703,17 +749,16 @@ kbd {
 
 .settings-header .icon-button {
   position: absolute;
-  right: 10px;
-  top: 8px;
+  right: 12px;
+  top: 9px;
 }
 
 .settings-tabs {
-  padding: 12px 18px 14px;
-  border-bottom: 0.5px solid var(--separator);
+  padding: 14px 20px 4px;
 }
 
 .settings-body {
-  padding: 16px 18px 20px;
+  padding: 14px 20px 22px;
   overflow-y: auto;
 }
 
@@ -731,7 +776,7 @@ kbd {
 .group-box {
   background: var(--group);
   border: 0.5px solid var(--separator);
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
 }
 
@@ -739,8 +784,8 @@ kbd {
   display: flex;
   align-items: center;
   gap: 16px;
-  min-height: 44px;
-  padding: 9px 12px;
+  min-height: 48px;
+  padding: 10px 14px;
 }
 
 .group-row + .group-row {
@@ -897,15 +942,15 @@ kbd {
   display: flex;
   align-items: center;
   padding: 2px;
-  border-radius: 8px;
-  background: var(--fill);
+  border-radius: 999px;
+  background: var(--fill-strong);
 }
 
 .size-stepper button {
   flex: 1;
-  height: 26px;
+  height: 28px;
   border: 0;
-  border-radius: 6px;
+  border-radius: 999px;
   background: transparent;
   box-shadow: none;
   font-family: var(--serif);
@@ -966,7 +1011,8 @@ kbd {
 }
 
 .page-swatch[aria-checked="true"] .page-swatch-chip {
-  box-shadow: 0 0 0 2px var(--window), 0 0 0 4px var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .page-swatch-auto .page-swatch-chip {
@@ -992,10 +1038,27 @@ kbd {
 /* Reader */
 
 .reader {
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--page, var(--window));
   color: var(--page-text, var(--label));
+}
+
+/* Glass that suits the page colour, whatever the app's appearance. */
+.reader.page-light,
+.reader.page-sepia {
+  --glass: rgba(255, 255, 255, 0.66);
+  --glass-shadow: 0 0 0 0.5px rgba(0, 0, 0, 0.1), 0 6px 22px rgba(0, 0, 0, 0.08), inset 0 1px 0.5px rgba(255, 255, 255, 0.85);
+}
+
+.reader.page-sepia {
+  --glass: rgba(253, 248, 238, 0.7);
+}
+
+.reader.page-dark {
+  --glass: rgba(52, 52, 56, 0.66);
+  --glass-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.13), 0 6px 22px rgba(0, 0, 0, 0.35), inset 0 1px 0.5px rgba(255, 255, 255, 0.1);
 }
 
 .reader.page-light {
@@ -1030,19 +1093,58 @@ kbd {
   color: var(--page-text, var(--label));
 }
 
+/* The reader's toolbar floats over the article: glass buttons, and a soft
+   blur where the text scrolls under them. */
+.reader-toolbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  height: calc(var(--toolbar-height) + 8px);
+  padding: 8px 14px 0;
+}
+
+.reader-toolbar::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 -14px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(var(--page, var(--window)) 20%, transparent);
+  opacity: 0.85;
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  -webkit-mask-image: linear-gradient(black 55%, transparent);
+  mask-image: linear-gradient(black 55%, transparent);
+}
+
 :root[data-platform="macos"] .reader-toolbar {
-  padding-left: 82px;
+  padding-left: 84px;
 }
 
 .toolbar .icon-button,
 .toolbar .back-button {
-  color: var(--page-muted, var(--secondary));
+  color: var(--page-text, var(--label));
+}
+
+.reader-toolbar .back-button,
+.reader-toolbar .toolbar-actions {
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
 }
 
 .back-button {
-  padding: 0 8px 0 2px;
-  gap: 1px;
+  height: 34px;
+  padding: 0 14px 0 8px;
+  gap: 2px;
   font-weight: 500;
+}
+
+.back-button.ghost:hover:not(:disabled) {
+  color: var(--page-text, var(--label));
 }
 
 .toolbar-title {
@@ -1067,14 +1169,16 @@ kbd {
 
 .toolbar-actions {
   display: flex;
-  gap: 2px;
+  gap: 0;
+  padding: 1px;
+  border-radius: 999px;
 }
 
 .reading-progress {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  top: 0;
   height: 2px;
 }
 
@@ -1087,19 +1191,17 @@ kbd {
 
 .popover {
   position: absolute;
-  top: calc(100% + 4px);
-  right: 10px;
+  top: calc(100% + 6px);
+  right: 14px;
   z-index: 10;
-  background: var(--window);
+  background: var(--sheet);
+  -webkit-backdrop-filter: blur(40px) saturate(1.8);
+  backdrop-filter: blur(40px) saturate(1.8);
   color: var(--label);
-  border-radius: 12px;
+  border-radius: 22px;
   box-shadow: var(--shadow);
-  padding: 12px;
+  padding: 14px;
   animation: sheet-in 0.16s ease-out;
-}
-
-:root.dark .popover {
-  background: #2a2a2a;
 }
 
 .prefs-panel {
@@ -1109,6 +1211,7 @@ kbd {
 .reader-scroll {
   flex: 1;
   overflow-y: auto;
+  padding-top: calc(var(--toolbar-height) + 8px);
 }
 
 .reader-article {
@@ -1210,7 +1313,7 @@ kbd {
   height: auto;
   display: block;
   margin: 1.5em auto;
-  border-radius: 6px;
+  border-radius: 12px;
 }
 
 .reader-body figure {
@@ -1318,8 +1421,12 @@ kbd {
     display: none;
   }
 
+  .main-toolbar {
+    padding-left: 16px;
+  }
+
   :root[data-platform="macos"] .main-toolbar {
-    padding-left: 82px;
+    padding-left: 84px;
   }
 
   .link-field {

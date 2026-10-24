@@ -28,7 +28,7 @@ Checked 2026-10-24. Readbox's UI is **React 19 + TypeScript with plain CSS**:
 - Design tokens are CSS variables at the top of `src/App.css` (`--bg`, `--surface`, `--accent`, `--serif`, …) with light, sepia and dark themes; map every colour, radius and font to them.
 - Icons are hand-drawn line icons in `src/components/Icon.tsx`; add new ones there instead of pulling in an icon set.
 - Animations are CSS keyframes and transitions, switched off under `prefers-reduced-motion`.
-- The dominant style is calm and editorial (warm paper tones, serif titles). Keep new elements in that style.
+- The dominant style is current macOS: system fonts, a floating glass sidebar, capsule-shaped controls, glass toolbar buttons (`.glass`, `--glass`, `--glass-shadow`) and large corner radii. Keep new elements in that style.
 - For step 8, `npm run design` serves the interface with sample data at `http://localhost:1430/design-preview.html`, and `scripts/screenshots.sh <folder>` captures every screen (light, dark, narrow).
 
 ## Workflow
