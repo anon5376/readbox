@@ -1,10 +1,19 @@
+import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LibraryView, type PendingSave } from "./components/LibraryView";
 import { Reader } from "./components/Reader";
 import { api, type ArticleMeta } from "./lib/api";
 import { useReaderPrefs } from "./lib/prefs";
-import { saveLink } from "./lib/save";
+import { sameLink, saveLink, savePage } from "./lib/save";
 import "./App.css";
+
+interface SaveOutcome {
+  ok: boolean;
+  title?: string;
+  error?: string;
+  alreadySaved?: boolean;
+}
 
 export default function App() {
   const [articles, setArticles] = useState<ArticleMeta[]>([]);
@@ -34,19 +43,45 @@ export default function App() {
     return () => window.removeEventListener("focus", refresh);
   }, [refresh]);
 
-  const runSave = useCallback(async (save: PendingSave) => {
+  const articlesRef = useRef(articles);
+  articlesRef.current = articles;
+
+  const runSave = useCallback(async (save: PendingSave): Promise<SaveOutcome> => {
+    const existing = articlesRef.current.find((a) => sameLink(a.url, save.link));
+    if (existing) {
+      setPending((list) => list.filter((s) => s.key !== save.key));
+      return { ok: true, title: existing.title, alreadySaved: true };
+    }
     setPending((list) => [save, ...list.filter((s) => s.key !== save.key)]);
     try {
-      const meta = await saveLink(save.link);
+      const meta = save.html ? await savePage(save.html, save.link) : await saveLink(save.link);
       setArticles((list) => [meta, ...list]);
       setPending((list) => list.filter((s) => s.key !== save.key));
+      return { ok: true, title: meta.title };
     } catch (e) {
       const error = e instanceof Error ? e.message : String(e);
       setPending((list) => list.map((s) => (s.key === save.key ? { ...save, error } : s)));
+      return { ok: false, error };
     }
   }, []);
 
-  const save = useCallback((link: string) => runSave({ key: nextKey.current++, link: link.trim() }), [runSave]);
+  const save = useCallback(
+    (link: string, html?: string) => runSave({ key: nextKey.current++, link: link.trim(), html }),
+    [runSave],
+  );
+
+  // Saves sent by the browser extension arrive as events; the extension waits
+  // for the outcome to show a ✓ or an error on its button.
+  useEffect(() => {
+    const unlisten = listen<{ id: number; url: string; html: string | null }>("save-request", async (event) => {
+      const { id, url, html } = event.payload;
+      const outcome = await save(url, html ?? undefined);
+      await invoke("complete_save", { id, outcome });
+    });
+    return () => {
+      unlisten.then((stop) => stop());
+    };
+  }, [save]);
 
   // Pasting a link anywhere outside a text field saves it.
   useEffect(() => {

@@ -1,3 +1,4 @@
+mod bridge;
 mod library;
 
 use library::{ArticleMeta, Library, MetaPatch, NewArticle};
@@ -5,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Manager, RunEvent, State, WindowEvent};
 
 const MAX_PAGE_BYTES: u64 = 15 * 1024 * 1024;
 const MAX_IMAGE_BYTES: u64 = 15 * 1024 * 1024;
@@ -42,7 +43,7 @@ fn http() -> &'static reqwest::Client {
     })
 }
 
-fn parse_web_url(raw: &str) -> Result<url::Url, String> {
+pub(crate) fn parse_web_url(raw: &str) -> Result<url::Url, String> {
     let url = url::Url::parse(raw.trim()).map_err(|_| format!("Not a valid link: {raw}"))?;
     match url.scheme() {
         "http" | "https" => Ok(url),
@@ -201,15 +202,31 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .setup(|app| {
             let handle = app.handle();
-            let dir = load_settings(handle)
-                .library_dir
+            // READBOX_LIBRARY points a test run at a throwaway folder without
+            // touching the saved setting.
+            let dir = std::env::var_os("READBOX_LIBRARY")
+                .map(PathBuf::from)
+                .or_else(|| load_settings(handle).library_dir)
                 .unwrap_or_else(|| default_library_dir(handle));
             std::fs::create_dir_all(&dir)?;
             allow_assets(handle, &dir)?;
             app.manage(LibraryRoot(Mutex::new(dir)));
+            app.manage(bridge::Bridge::default());
+            bridge::start(handle.clone());
             Ok(())
         })
+        // On a Mac, closing the window keeps Readbox running in the Dock so the
+        // browser extension can still save; ⌘Q quits.
+        .on_window_event(|window, event| {
+            if let WindowEvent::CloseRequested { api, .. } = event {
+                if cfg!(target_os = "macos") {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
+        })
         .invoke_handler(tauri::generate_handler![
+            bridge::complete_save,
             get_library_dir,
             set_library_dir,
             fetch_page,
@@ -221,8 +238,23 @@ pub fn run() {
             trash_article,
             download_image,
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app, event| {
+            // Clicking the Dock icon brings the hidden window back.
+            #[cfg(target_os = "macos")]
+            if let RunEvent::Reopen { .. } = event {
+                show_main_window(app);
+            }
+            let _ = (app, event);
+        });
+}
+
+fn show_main_window(app: &AppHandle) {
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.show();
+        let _ = window.set_focus();
+    }
 }
 
 #[cfg(test)]

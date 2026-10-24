@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { normalizeLink } from "./save";
+import { normalizeLink, sameLink } from "./save";
+
+describe("sameLink", () => {
+  it("ignores anchors, trailing slashes and missing schemes", () => {
+    expect(sameLink("https://example.com/post/", "https://example.com/post#comments")).toBe(true);
+    expect(sameLink("example.com/post", "https://example.com/post")).toBe(true);
+  });
+
+  it("tells different articles apart", () => {
+    expect(sameLink("https://example.com/a", "https://example.com/b")).toBe(false);
+    expect(sameLink("https://example.com/a?page=2", "https://example.com/a")).toBe(false);
+  });
+});
 
 describe("normalizeLink", () => {
   it("adds https to bare domains", () => {

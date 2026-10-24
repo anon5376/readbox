@@ -8,6 +8,8 @@ import { hostname } from "./Reader";
 export interface PendingSave {
   key: number;
   link: string;
+  /** The page as the browser showed it, when it came from the extension. */
+  html?: string;
   error?: string;
 }
 

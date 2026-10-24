@@ -1,0 +1,37 @@
+{
+  "manifest_version": 3,
+  "name": "Save to Readbox",
+  "version": "0.1.0",
+  "description": "Save the page you're reading to the Readbox app on your computer. Nothing is sent anywhere else.",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "action": {
+    "default_title": "Save to Readbox",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png"
+    }
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "permissions": ["activeTab", "scripting", "contextMenus", "notifications"],
+  "host_permissions": ["http://127.0.0.1/*"],
+  "commands": {
+    "_execute_action": {
+      "suggested_key": { "default": "Alt+Shift+S" },
+      "description": "Save this page to Readbox"
+    }
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "save@readbox.app",
+      "strict_min_version": "121.0"
+    }
+  }
+}
