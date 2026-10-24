@@ -3,6 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "r
 import { api, localFileUrl, type ArticleMeta } from "../lib/api";
 import { readingMinutes, toDisplayHtml } from "../lib/extract";
 import type { ReaderPrefs } from "../lib/prefs";
+import { useReadingTimer } from "../lib/useReadingTimer";
 import { Icon } from "./Icon";
 import { ScrollProgress } from "./rareui/scroll-progress";
 import { ReadingControls } from "./ReadingControls";
@@ -59,12 +60,14 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   };
 
   useEffect(() => flushProgress, [article.dir]); // save on leaving the article
+  const timeReading = useReadingTimer(article.dir, article.wordCount, article.progress);
 
   const onScroll = () => {
     const el = scroller.current!;
     const scrollable = el.scrollHeight - el.clientHeight;
     const progress = scrollable <= 0 ? 1 : el.scrollTop / scrollable;
     pendingProgress.current = progress;
+    timeReading(progress);
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(flushProgress, PROGRESS_SAVE_DELAY_MS);
   };

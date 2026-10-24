@@ -1,5 +1,6 @@
 import { Readability } from "@mozilla/readability";
 import DOMPurify from "dompurify";
+import { wordsPerMinute } from "./readingSpeed";
 
 export interface ExtractedArticle {
   title: string;
@@ -181,6 +182,7 @@ function clean(value: string | null | undefined): string | null {
   return trimmed ? trimmed : null;
 }
 
-export function readingMinutes(wordCount: number): number {
-  return Math.max(1, Math.round(wordCount / 230));
+/** Minutes to read, at the speed Readbox has learned for you (see readingSpeed.ts). */
+export function readingMinutes(wordCount: number, wpm = wordsPerMinute()): number {
+  return Math.max(1, Math.round(wordCount / wpm));
 }

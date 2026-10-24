@@ -121,6 +121,7 @@ describe("image handling", () => {
 });
 
 it("estimates reading time", () => {
-  expect(readingMinutes(0)).toBe(1);
-  expect(readingMinutes(2300)).toBe(10);
+  expect(readingMinutes(0, 250)).toBe(1);
+  expect(readingMinutes(2500, 250)).toBe(10);
+  expect(readingMinutes(2500, 500)).toBe(5);
 });

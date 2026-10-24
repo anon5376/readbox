@@ -111,6 +111,13 @@ localStorage.setItem(
   }),
 );
 
+// ?learned=N: Readbox has learned a 320 wpm pace from N articles.
+const learned = Number(params.get("learned") ?? 0);
+localStorage.setItem(
+  "readbox.readingSpeed",
+  JSON.stringify(Array.from({ length: learned }, (_, i) => ({ dir: `sample-${i}`, words: 1600, seconds: 300 }))),
+);
+
 // Jump straight to a screen for screenshots.
 const clickWhenReady = (selector: string) => {
   const timer = setInterval(() => {

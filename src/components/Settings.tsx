@@ -7,6 +7,7 @@ import appIcon from "../../src-tauri/icons/128x128@2x.png";
 import { api } from "../lib/api";
 import { isMac } from "../lib/platform";
 import type { ReaderPrefs } from "../lib/prefs";
+import { TRAINING, TYPICAL_WPM, articlesLearned, resetReadingSpeed, wordsPerMinute } from "../lib/readingSpeed";
 import { SegmentedControl } from "./affectui/segmented-control";
 import { Icon, type IconName } from "./Icon";
 import { ReadingControls } from "./ReadingControls";
@@ -156,7 +157,34 @@ function Reading({ prefs, onPrefs }: Props) {
         </div>
       </Group>
       <p className="settings-footnote">You can also change these while reading, with the Aa button.</p>
+      <ReadingSpeed />
     </>
+  );
+}
+
+function ReadingSpeed() {
+  const [learned, setLearned] = useState(articlesLearned);
+  const wpm = wordsPerMinute();
+  const hint =
+    learned === 0
+      ? `Times assume ${TYPICAL_WPM} words a minute until Readbox learns your pace from the first ${TRAINING} articles you read.`
+      : learned < TRAINING
+        ? `About ${wpm} words a minute so far. Still learning: ${learned} of ${TRAINING} articles read.`
+        : `About ${wpm} words a minute, learned from the last ${TRAINING} articles you read.`;
+  return (
+    <Group title="Reading time">
+      <Row label="Your reading speed" hint={hint}>
+        <button
+          disabled={learned === 0}
+          onClick={() => {
+            resetReadingSpeed();
+            setLearned(0);
+          }}
+        >
+          Start Over
+        </button>
+      </Row>
+    </Group>
   );
 }
 

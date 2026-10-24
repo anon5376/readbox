@@ -917,6 +917,10 @@ kbd {
   color: var(--secondary);
 }
 
+.settings-footnote + .group {
+  margin-top: 20px;
+}
+
 .status-dot {
   width: 10px;
   height: 10px;
