@@ -11,7 +11,7 @@ import { SegmentedControl } from "./affectui/segmented-control";
 import { Icon, type IconName } from "./Icon";
 import { ReadingControls } from "./ReadingControls";
 
-const REPO = "https://github.com/anon5376/readbox";
+export const REPO = "https://github.com/anon5376/readbox";
 
 type Tab = "general" | "reading" | "browser" | "import" | "about";
 const TABS: { value: Tab; label: string; icon: IconName }[] = [
@@ -55,15 +55,14 @@ export function Settings(props: Props) {
         <div className="settings-tabs">
           <SegmentedControl
             kind="tabs"
+            variant="underline"
             aria-label="Settings sections"
             size="sm"
-            fullWidth
             value={tab}
             onChange={setTab}
             options={TABS.map((t) => ({
               value: t.value,
               label: t.label,
-              icon: <Icon name={t.icon} size={15} />,
               controls: `settings-${t.value}`,
             }))}
           />
@@ -228,7 +227,15 @@ function About() {
         <button onClick={() => openUrl(`${REPO}/issues`)}>Report a Problem</button>
       </div>
       <p className="about-credits">
-        Open source under the MIT license. Built with Tauri, Mozilla Readability, DOMPurify and components from affectUI.
+        Open source under the MIT license. Built with Tauri, Mozilla Readability and DOMPurify, with components from{" "}
+        <button className="link-button" onClick={() => openUrl("https://www.affectui.com")}>
+          affectUI
+        </button>{" "}
+        and animations from{" "}
+        <button className="link-button" onClick={() => openUrl("https://rareui.com")}>
+          Rare UI
+        </button>
+        .
       </p>
     </div>
   );

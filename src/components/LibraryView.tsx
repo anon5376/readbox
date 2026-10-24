@@ -1,16 +1,18 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { useRef, useState, type FormEvent } from "react";
+import appIcon from "../../src-tauri/icons/128x128@2x.png";
 import { api, localFileUrl, type ArticleMeta, type Status } from "../lib/api";
 import { readingMinutes } from "../lib/extract";
 import { shortcut } from "../lib/platform";
 import type { ReaderPrefs } from "../lib/prefs";
 import type { ImportJob } from "../lib/useImport";
 import { SegmentedControl } from "./affectui/segmented-control";
-import { ShimmerText } from "./affectui/shimmer-loader";
-import { TabOverload } from "./affectui/tab-overload";
 import { Icon } from "./Icon";
+import { AnimatedCounter } from "./rareui/animated-counter";
+import { BounceNav } from "./rareui/bounce-nav";
+import { DeleteButton } from "./rareui/delete-button";
 import { hostname } from "./Reader";
-import { Settings } from "./Settings";
+import { REPO, Settings } from "./Settings";
 
 export interface PendingSave {
   key: number;
@@ -44,12 +46,16 @@ const TABS: { key: Status; label: string }[] = [
   { key: "archived", label: "Archive" },
 ];
 
+// A row saved this recently slides in; everything already there on launch stays still.
+const ARRIVING_MS = 10_000;
+
 export function LibraryView(props: Props) {
   const { articles, pending, libraryDir, onSave } = props;
   const [tab, setTab] = useState<Status>("unread");
   const [link, setLink] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+  const linkInput = useRef<HTMLInputElement>(null);
 
   const counts = {
     unread: articles.filter((a) => a.status === "unread").length,
@@ -71,28 +77,35 @@ export function LibraryView(props: Props) {
     <div className="library">
       <aside className="sidebar">
         <div className="titlebar-space" data-tauri-drag-region />
+        <button className="product" onClick={() => setShowSettings(true)} title="Library folder and settings">
+          <img src={appIcon} width={22} height={22} alt="" />
+          <span className="product-text">
+            <span className="product-name">Readbox</span>
+            <span className="product-scope">{folderName(libraryDir)}</span>
+          </span>
+        </button>
         <div className="sidebar-section" data-tauri-drag-region>
           Library
         </div>
-        <nav className="nav">
-          {TABS.map((t) => (
-            <button
-              key={t.key}
-              className={`nav-item ${tab === t.key ? "selected" : ""}`}
-              onClick={() => setTab(t.key)}
-              aria-current={tab === t.key ? "page" : undefined}
-            >
-              <span className="nav-label">{t.label}</span>
-              <span className="count">{counts[t.key] || ""}</span>
-            </button>
-          ))}
-        </nav>
+        <BounceNav
+          label="Library"
+          value={tab}
+          onChange={setTab}
+          items={[
+            {
+              value: "unread",
+              label: "Unread",
+              trailing: counts.unread > 0 && <AnimatedCounter className="count" value={counts.unread} />,
+            },
+            { value: "archived", label: "Archive" },
+          ]}
+        />
         <div className="sidebar-spacer" data-tauri-drag-region />
         <button className="nav-item" onClick={chooseImport} disabled={importing}>
-          <span className="nav-label">Import…</span>
+          Import…
         </button>
         <button className="nav-item" onClick={() => setShowSettings(true)} data-panel="settings">
-          <span className="nav-label">Settings</span>
+          Settings
         </button>
       </aside>
 
@@ -114,20 +127,21 @@ export function LibraryView(props: Props) {
             </span>
           </div>
           <div className="toolbar-spacer" data-tauri-drag-region />
-          <form className="link-field" onSubmit={submit} role="search">
-            <Icon name="link" size={15} />
-            <input
-              value={link}
-              onChange={(e) => setLink(e.target.value)}
-              placeholder="Paste a link to save"
-              aria-label="Link to save"
-              spellCheck={false}
-            />
-            {link.trim() && (
-              <button type="submit" className="link-field-save">
-                Save
-              </button>
-            )}
+          <form className="link-form" onSubmit={submit} role="search">
+            <label className="link-field">
+              <Icon name="link" size={15} />
+              <input
+                ref={linkInput}
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+                placeholder="Paste a link to save"
+                aria-label="Link to save"
+                spellCheck={false}
+              />
+            </label>
+            <button type="submit" className="primary" disabled={!link.trim()}>
+              Save
+            </button>
           </form>
           <button className="icon-button compact-only" onClick={chooseImport} title="Import" disabled={importing}>
             <Icon name="import" />
@@ -142,37 +156,34 @@ export function LibraryView(props: Props) {
             <ImportBanner job={props.importJob} onStop={props.onStopImport} onDismiss={props.onDismissImport} />
           )}
 
-          {(shown.length > 0 || pending.length > 0) && (
-            <div className="list">
-              {tab === "unread" &&
-                pending.map((save) => (
-                  <div key={save.key} className={`row pending ${save.error ? "failed" : ""}`}>
-                    <div className="row-main">
-                      <div className="row-title">
-                        {save.error ? "Couldn't save this link" : <ShimmerText>Saving…</ShimmerText>}
-                      </div>
-                      <div className="row-meta">{hostname(save.link)}</div>
-                      {save.error && <div className="row-error">{save.error}</div>}
-                    </div>
-                    {save.error && (
-                      <div className="row-actions visible">
-                        <button onClick={() => props.onRetry(save)}>Try Again</button>
-                        <button className="ghost" onClick={() => props.onDismiss(save)}>
-                          Dismiss
-                        </button>
-                      </div>
-                    )}
+          <div className="panel">
+            {tab === "unread" &&
+              pending.map((save) => (
+                <div key={save.key} className={`row pending arriving ${save.error ? "failed" : ""}`}>
+                  <div className="row-thumb placeholder" aria-hidden="true">
+                    {initial(hostname(save.link))}
                   </div>
-                ))}
-              {shown.map((article) => (
-                <ArticleRow key={article.dir} {...props} article={article} libraryDir={libraryDir} />
+                  <div className="row-main">
+                    <div className="row-title">{save.error ? "Couldn't save this link" : "Saving…"}</div>
+                    <div className="row-sub">{save.error ?? hostname(save.link)}</div>
+                  </div>
+                  {save.error && (
+                    <div className="row-side buttons">
+                      <button onClick={() => props.onRetry(save)}>Try Again</button>
+                      <button className="ghost" onClick={() => props.onDismiss(save)}>
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
+                </div>
               ))}
-            </div>
-          )}
-
-          {shown.length === 0 && pending.length === 0 && !importing && (
-            <EmptyState tab={tab} onImport={chooseImport} />
-          )}
+            {shown.map((article) => (
+              <ArticleRow key={article.dir} {...props} article={article} libraryDir={libraryDir} />
+            ))}
+            {shown.length === 0 && pending.length === 0 && !importing && (
+              <EmptyState tab={tab} onImport={chooseImport} onPaste={() => linkInput.current?.focus()} />
+            )}
+          </div>
         </div>
       </section>
 
@@ -214,6 +225,7 @@ function ArticleRow({
   onChange,
   onTrashed,
 }: { article: ArticleMeta; libraryDir: string } & Props) {
+  const [thumbFailed, setThumbFailed] = useState(false);
   const toggleArchive = async () => {
     const status = article.status === "archived" ? "unread" : "archived";
     onChange(await api.updateArticle(article.dir, { status }));
@@ -225,34 +237,43 @@ function ArticleRow({
   const started = article.progress > 0.02 && article.progress < 0.98;
   const linkOnly = article.wordCount === 0;
   const site = article.siteName ?? hostname(article.url);
+  const arriving = Date.now() - new Date(article.savedAt).getTime() < ARRIVING_MS;
 
   return (
     <div
-      className="row"
+      className={`row ${arriving ? "arriving" : ""}`}
       onClick={() => onOpen(article)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => e.key === "Enter" && onOpen(article)}
+      onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && onOpen(article)}
     >
-      <div className="row-main">
-        <div className="row-title">{article.title}</div>
-        <div className="row-meta">
-          {site} — {linkOnly ? "link only" : `${readingMinutes(article.wordCount)} min`}
-          <span className="row-date">{savedLabel(article.savedAt)}</span>
-          {started && <span className="row-progress">{Math.round(article.progress * 100)}% read</span>}
-        </div>
-        {article.excerpt && <div className="row-excerpt">{article.excerpt}</div>}
-      </div>
-      {article.thumbnail && (
+      {article.thumbnail && !thumbFailed ? (
         <img
           className="row-thumb"
           src={localFileUrl(libraryDir, article.dir, article.thumbnail)}
           alt=""
           loading="lazy"
-          onError={(e) => (e.currentTarget.style.display = "none")}
+          onError={() => setThumbFailed(true)}
         />
+      ) : (
+        <div className="row-thumb placeholder" aria-hidden="true">
+          {initial(site)}
+        </div>
       )}
-      <div className="row-actions" onClick={(e) => e.stopPropagation()}>
+      <div className="row-main">
+        <div className="row-title">{article.title}</div>
+        <div className="row-sub">
+          <span className="row-site">
+            {site} · {linkOnly ? "link only" : `${readingMinutes(article.wordCount)} min`}
+          </span>
+          {article.excerpt && <span className="row-excerpt"> — {article.excerpt}</span>}
+        </div>
+      </div>
+      <div className="row-side">
+        <span className="row-date">{savedLabel(article.savedAt)}</span>
+        {started && <span className="row-progress">{Math.round(article.progress * 100)}% read</span>}
+      </div>
+      <div className="row-actions" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
         <button
           className="icon-button"
           onClick={toggleArchive}
@@ -263,48 +284,48 @@ function ArticleRow({
         <button className="icon-button" onClick={() => openUrl(article.url)} title="Open the Original">
           <Icon name="external" />
         </button>
-        <button className="icon-button danger" onClick={trash} title="Move to Trash">
-          <Icon name="trash" />
-        </button>
+        <DeleteButton label="Move to Trash" onConfirm={trash} />
       </div>
     </div>
   );
 }
 
-function EmptyState({ tab, onImport }: { tab: Status; onImport: () => void }) {
+function EmptyState({ tab, onImport, onPaste }: { tab: Status; onImport: () => void; onPaste: () => void }) {
   if (tab === "archived") {
     return (
       <div className="empty">
-        <Icon name="archive" size={40} />
-        <h2>No Archived Articles</h2>
+        <h2>Nothing archived yet</h2>
         <p>When you finish an article, archive it and it moves here.</p>
       </div>
     );
   }
   return (
     <div className="empty">
-      <TabOverload className="empty-art" label="Overlapping browser windows full of pages" />
-      <h2>Nothing to Read Yet</h2>
-      <p>Too many tabs open? Save them here and read them later, even offline.</p>
-      <ul className="tips">
-        <li>
-          <Icon name="link" />
-          <span>Paste a link in the toolbar, or press {shortcut("V")} anywhere in this window.</span>
-        </li>
-        <li>
-          <Icon name="globe" />
-          <span>Click the Readbox button in your browser to save the page you're on.</span>
-        </li>
-        <li>
-          <Icon name="import" />
-          <span>
-            Bring your list from Pocket, Omnivore or Instapaper.{" "}
-            <button className="link-button" onClick={onImport}>
-              Import…
-            </button>
-          </span>
-        </li>
-      </ul>
+      <h2>Save your first article</h2>
+      <p>Readbox keeps what you save on this computer, so you can read it later, even offline.</p>
+      <div className="start">
+        <div className="start-row">
+          <div className="start-text">
+            <div className="start-title">Paste a link</div>
+            <div className="start-hint">In the field above, or press {shortcut("V")} anywhere in this window.</div>
+          </div>
+          <button onClick={onPaste}>Paste a Link</button>
+        </div>
+        <div className="start-row">
+          <div className="start-text">
+            <div className="start-title">Save from your browser</div>
+            <div className="start-hint">Add the Readbox button to Firefox, Chrome, Brave, Edge or Helium.</div>
+          </div>
+          <button onClick={() => openUrl(`${REPO}#browser-extension`)}>How to Install</button>
+        </div>
+        <div className="start-row">
+          <div className="start-text">
+            <div className="start-title">Bring your old list</div>
+            <div className="start-hint">From Pocket, Omnivore or Instapaper.</div>
+          </div>
+          <button onClick={onImport}>Import…</button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -372,4 +393,12 @@ function savedLabel(iso: string): string {
 
 function startOfDay(d: Date): number {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+}
+
+function initial(name: string): string {
+  return (name.replace(/^www\./, "").match(/[\p{L}\p{N}]/u)?.[0] ?? "?").toUpperCase();
+}
+
+function folderName(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
 }

@@ -1,7 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "app": {
-    "macOSPrivateApi": true,
     "windows": [
       {
         "title": "Readbox",
@@ -11,9 +10,10 @@
         "minHeight": 480,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
-        "trafficLightPosition": { "x": 18, "y": 22 },
-        "transparent": true,
-        "windowEffects": { "effects": ["sidebar"], "state": "followsWindowActiveState" }
+        "trafficLightPosition": {
+          "x": 18,
+          "y": 22
+        }
       }
     ]
   }

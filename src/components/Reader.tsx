@@ -3,8 +3,8 @@ import { useEffect, useLayoutEffect, useRef, useState, type MouseEvent } from "r
 import { api, localFileUrl, type ArticleMeta } from "../lib/api";
 import { readingMinutes, toDisplayHtml } from "../lib/extract";
 import type { ReaderPrefs } from "../lib/prefs";
-import { Skeleton } from "./affectui/shimmer-loader";
 import { Icon } from "./Icon";
+import { ScrollProgress, type Section } from "./rareui/scroll-progress";
 import { ReadingControls } from "./ReadingControls";
 
 const PROGRESS_SAVE_DELAY_MS = 600;
@@ -22,10 +22,8 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
   const [html, setHtml] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showPrefs, setShowPrefs] = useState(false);
-  // The title moves into the toolbar once the article's own heading scrolls away.
-  const [titleInToolbar, setTitleInToolbar] = useState(false);
+  const [sections, setSections] = useState<Section[]>([]);
   const scroller = useRef<HTMLDivElement>(null);
-  const progressBar = useRef<HTMLDivElement>(null);
   const pendingProgress = useRef<number | null>(null);
   const saveTimer = useRef<number | undefined>(undefined);
 
@@ -49,14 +47,10 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
     const el = scroller.current;
     if (html === null || !el) return;
     if (article.progress > 0) el.scrollTop = article.progress * (el.scrollHeight - el.clientHeight);
-    showProgress(article.progress);
+    setSections(findSections(el));
     // Only on first render of this article's text.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [html]);
-
-  const showProgress = (progress: number) => {
-    if (progressBar.current) progressBar.current.style.transform = `scaleX(${progress})`;
-  };
 
   const flushProgress = () => {
     window.clearTimeout(saveTimer.current);
@@ -72,8 +66,6 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
     const el = scroller.current!;
     const scrollable = el.scrollHeight - el.clientHeight;
     const progress = scrollable <= 0 ? 1 : el.scrollTop / scrollable;
-    showProgress(progress);
-    setTitleInToolbar(el.scrollTop > 160);
     pendingProgress.current = progress;
     window.clearTimeout(saveTimer.current);
     saveTimer.current = window.setTimeout(flushProgress, PROGRESS_SAVE_DELAY_MS);
@@ -114,8 +106,15 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
           <Icon name="chevronLeft" size={20} />
           {archived ? "Archive" : "Unread"}
         </button>
-        <div className={`toolbar-title ${titleInToolbar ? "visible" : ""}`} data-tauri-drag-region>
-          {article.title}
+        <div className="toolbar-center" data-tauri-drag-region>
+          {html !== null && (
+            <ScrollProgress
+              key={article.dir}
+              scroller={scroller}
+              sections={sections}
+              minutes={article.wordCount ? readingMinutes(article.wordCount) : 0}
+            />
+          )}
         </div>
         <div className="toolbar-actions">
           <button
@@ -134,9 +133,6 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
             <Icon name="external" />
           </button>
         </div>
-        <div className="reading-progress" aria-hidden="true">
-          <div ref={progressBar} />
-        </div>
         {showPrefs && <PrefsPanel prefs={prefs} onPrefs={onPrefs} />}
       </header>
 
@@ -152,7 +148,7 @@ export function Reader({ article, libraryDir, prefs, onPrefs, onBack, onChange }
           {html === null && !error && (
             <div className="reader-loading" aria-label="Loading the article">
               {[100, 94, 97, 60, 0, 98, 91, 85].map((w, i) =>
-                w ? <Skeleton key={i} width={`${w}%`} height="0.9em" radius={4} /> : <div key={i} className="gap" />,
+                w ? <div key={i} className="bar" style={{ width: `${w}%` }} /> : <div key={i} className="gap" />,
               )}
             </div>
           )}
@@ -182,6 +178,19 @@ function PrefsPanel({ prefs, onPrefs }: { prefs: ReaderPrefs; onPrefs: Props["on
       <ReadingControls prefs={prefs} onPrefs={onPrefs} />
     </div>
   );
+}
+
+/** The article's own headings, as places to jump to. Uses the top level the article has (h2, else h3). */
+function findSections(root: HTMLElement): Section[] {
+  const body = root.querySelector(".reader-body");
+  if (!body) return [];
+  const level = body.querySelector("h2") ? "h2" : "h3";
+  return [...body.querySelectorAll<HTMLElement>(level)]
+    .map((heading, i) => {
+      heading.id ||= `section-${i + 1}`;
+      return { id: heading.id, label: heading.textContent?.trim() ?? "" };
+    })
+    .filter((s) => s.label);
 }
 
 export function hostname(url: string): string {

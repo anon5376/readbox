@@ -430,8 +430,8 @@ const css = /* css */ `
   border-radius: inherit;
   overscroll-behavior-x: contain;
   scrollbar-width: none;
-  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--ui-seg-fade-l), #000 calc(100% - var(--ui-seg-fade-r)), transparent);
-  mask-image: linear-gradient(to right, transparent, #000 var(--ui-seg-fade-l), #000 calc(100% - var(--ui-seg-fade-r)), transparent);
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 var(--ui-seg-fade-l), #000 calc(100% - var(--ui-seg-fade-r)), transparent); /* taste-skill-ignore: overflow fade mask */
+  mask-image: linear-gradient(to right, transparent, #000 var(--ui-seg-fade-l), #000 calc(100% - var(--ui-seg-fade-r)), transparent); /* taste-skill-ignore: overflow fade mask */
   transition: --ui-seg-fade-l 200ms ease, --ui-seg-fade-r 200ms ease;
 }
 .ui-seg__scroller::-webkit-scrollbar { display: none; }

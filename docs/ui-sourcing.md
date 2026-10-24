@@ -28,7 +28,8 @@ Checked 2026-10-24. Readbox's UI is **React 19 + TypeScript with plain CSS**:
 - Design tokens are CSS variables at the top of `src/App.css` (`--bg`, `--surface`, `--accent`, `--serif`, …) with light, sepia and dark themes; map every colour, radius and font to them.
 - Icons are hand-drawn line icons in `src/components/Icon.tsx`; add new ones there instead of pulling in an icon set.
 - Animations are CSS keyframes and transitions, switched off under `prefers-reduced-motion`.
-- The dominant style is current macOS: system fonts, a floating glass sidebar, capsule-shaped controls, glass toolbar buttons (`.glass`, `--glass`, `--glass-shadow`) and large corner radii. Keep new elements in that style.
+- The dominant style is the **taste skill's "achromatic ledger" app style** ([Leonxlnx/taste-skill](https://github.com/Leonxlnx/taste-skill), `references/app-screens.md`), dealt on 2026-10-24: a paper ground (`--ground`), white panels with 1px edges, ink chrome, a near-black primary button, and the one hue (`--hue`, Readbox orange) only on reading progress. No glass, blur, gradients or resting shadows; motion is feedback only (press, a menu or sheet opening, a row arriving), never an entrance. Keep new elements in that style.
+- **Rare UI** (https://rareui.com, source github.com/swamimalode07/rare-ui) is a fifth source, for animations. Its licence is MIT + Commons Clause + Attribution: fine to use inside Readbox, never to redistribute the components on their own; keep the copyright line in each ported file and the rareui.com credit in About and the README. Its components need Motion, so they are ported to CSS in `src/components/rareui/`.
 - For step 8, `npm run design` serves the interface with sample data at `http://localhost:1430/design-preview.html`, and `scripts/screenshots.sh <folder>` captures every screen (light, dark, narrow).
 
 ## Workflow

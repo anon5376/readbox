@@ -117,6 +117,8 @@ cd src-tauri && cargo test   # library/storage tests
 
 Article cleaning uses Mozilla's [Readability](https://github.com/mozilla/readability) (the engine behind Firefox's reader view) and [DOMPurify](https://github.com/cure53/DOMPurify).
 
+The interface uses the Segmented Control from [affectUI](https://www.affectui.com) (MIT) and animations ported from [Rare UI](https://rareui.com) (Animated Counter, Bounce Sidebar, Delete Button and Scroll Progress, under Rare UI's MIT + Commons Clause + Attribution licence in `src/components/rareui/LICENSE`). Its look follows the app-screen rules of [taste-skill](https://github.com/Leonxlnx/taste-skill).
+
 ## License
 
 [MIT](LICENSE)
