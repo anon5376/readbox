@@ -1,6 +1,6 @@
 /*
  * Readbox, in the current macOS style: system fonts (San Francisco, New York),
- * the system accent colour, a floating glass sidebar, capsule-shaped controls
+ * Readbox orange (from the app icon) as the accent, a floating glass sidebar, capsule-shaped controls
  * and glass toolbar buttons that content scrolls under. Light values first,
  * dark under .dark (set from Settings → Appearance).
  */
@@ -17,9 +17,9 @@
   --control: #ffffff;
   --control-border: rgba(0, 0, 0, 0.12);
   --group: rgba(0, 0, 0, 0.028);
-  --accent: #007aff;
+  --accent: #c4582a;
   --accent-text: #ffffff;
-  --accent-soft: rgba(0, 122, 255, 0.12);
+  --accent-soft: rgba(196, 88, 42, 0.14);
   --danger: #ff3b30;
   --success: #34c759;
   --link: var(--accent);
@@ -34,15 +34,6 @@
   color-scheme: light;
 }
 
-/* Follow the user's own accent colour where the system exposes it. */
-@supports (color: AccentColor) {
-  :root[data-platform="macos"] {
-    --accent: AccentColor;
-    --accent-text: AccentColorText;
-    --accent-soft: color-mix(in srgb, AccentColor 14%, transparent);
-  }
-}
-
 :root.dark {
   --window: #1e1e1e;
   --sidebar: #262626;
@@ -55,8 +46,8 @@
   --control: rgba(255, 255, 255, 0.1);
   --control-border: rgba(255, 255, 255, 0.08);
   --group: rgba(255, 255, 255, 0.04);
-  --accent: #0a84ff;
-  --accent-soft: rgba(10, 132, 255, 0.18);
+  --accent: #e8794a;
+  --accent-soft: rgba(232, 121, 74, 0.2);
   --danger: #ff453a;
   --success: #30d158;
   --shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.12), 0 22px 70px rgba(0, 0, 0, 0.55), 0 4px 14px rgba(0, 0, 0, 0.3);
@@ -336,10 +327,6 @@ kbd {
   color: var(--label);
   border-radius: 10px;
   font-weight: 400;
-}
-
-.nav-item .icon {
-  color: var(--accent);
 }
 
 .nav-item:active:not(:disabled) {

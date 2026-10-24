@@ -8,7 +8,7 @@ import type { ImportJob } from "../lib/useImport";
 import { SegmentedControl } from "./affectui/segmented-control";
 import { ShimmerText } from "./affectui/shimmer-loader";
 import { TabOverload } from "./affectui/tab-overload";
-import { Icon, type IconName } from "./Icon";
+import { Icon } from "./Icon";
 import { hostname } from "./Reader";
 import { Settings } from "./Settings";
 
@@ -39,9 +39,9 @@ interface Props {
   onDismissImport: () => void;
 }
 
-const TABS: { key: Status; label: string; icon: IconName }[] = [
-  { key: "unread", label: "Unread", icon: "inbox" },
-  { key: "archived", label: "Archive", icon: "archive" },
+const TABS: { key: Status; label: string }[] = [
+  { key: "unread", label: "Unread" },
+  { key: "archived", label: "Archive" },
 ];
 
 export function LibraryView(props: Props) {
@@ -82,7 +82,6 @@ export function LibraryView(props: Props) {
               onClick={() => setTab(t.key)}
               aria-current={tab === t.key ? "page" : undefined}
             >
-              <Icon name={t.icon} />
               <span className="nav-label">{t.label}</span>
               <span className="count">{counts[t.key] || ""}</span>
             </button>
@@ -90,11 +89,9 @@ export function LibraryView(props: Props) {
         </nav>
         <div className="sidebar-spacer" data-tauri-drag-region />
         <button className="nav-item" onClick={chooseImport} disabled={importing}>
-          <Icon name="import" />
           <span className="nav-label">Import…</span>
         </button>
         <button className="nav-item" onClick={() => setShowSettings(true)} data-panel="settings">
-          <Icon name="settings" />
           <span className="nav-label">Settings</span>
         </button>
       </aside>
