@@ -1,27 +1,70 @@
-# Readbox (working name)
+<p align="center">
+  <img src="src-tauri/icons/128x128@2x.png" width="112" alt="">
+</p>
 
-A calm read-later app for Mac and Windows. Save an article, read it later, offline, without ads or clutter.
+<h1 align="center">Readbox</h1>
 
-![Readbox: the reading list](docs/screenshot-library.png)
+<p align="center">
+  <b>A calm read-later app for Mac and Windows.</b><br>
+  Save articles, read them later, even offline. No account, no server, no ads.
+</p>
 
-- **No account, no server.** Nothing you save leaves your computer.
-- **Your library is a folder of plain files.** Put it in Dropbox, iCloud Drive or OneDrive to sync between computers. You can open the files without the app.
-- **Small and fast.** Built with [Tauri](https://tauri.app), not a bundled Chrome.
+<p align="center">
+  <a href="https://github.com/anon5376/readbox/releases/latest"><img src="https://img.shields.io/github/v/release/anon5376/readbox?label=download&color=c4582a" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/macOS%20%7C%20Windows-555" alt="macOS and Windows">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-555" alt="MIT license"></a>
+</p>
 
-**[Download Readbox](https://github.com/anon5376/readbox/releases/latest)** for Mac (.dmg) or Windows (.exe). It isn't signed with a paid developer certificate yet, so the first time you open it: on a Mac go to **System Settings → Privacy & Security → Open Anyway**; on Windows click **More info → Run anyway**.
+<p align="center">
+  <a href="https://github.com/anon5376/readbox/releases/latest"><b>Download for Mac</b></a> (.dmg)
+  &nbsp;·&nbsp;
+  <a href="https://github.com/anon5376/readbox/releases/latest"><b>Download for Windows</b></a> (.exe)
+</p>
 
-> **Status:** early. Saving (paste a link, or the browser extension), importing from Pocket, Omnivore and Instapaper, the reading list and the reader work.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/hero-dark.png">
+  <img src="docs/hero-light.png" alt="Readbox showing a reading list of saved articles">
+</picture>
 
-> **Built with AI.** Most of the code is written by AI coding agents, directed and tested by a human. Bugs are likely at this stage; please open an issue.
+## Why Readbox
 
-![Reading an article in Readbox](docs/screenshot-reader.png)
+Pocket shut down. Omnivore shut down. Readbox can't, because there's nothing to shut down: no company servers, no account, no subscription.
+
+- **Your library is a folder of plain files.** Put it in iCloud Drive, Dropbox or OneDrive to sync between computers. You can open the files without the app.
+- **Nothing leaves your computer.** No tracking, no analytics.
+- **Saves the page as you see it.** The browser extension keeps articles you're logged into, with their pictures, for reading offline.
+- **Bring your old list.** Imports from Pocket, Omnivore and Instapaper, keeping dates and what you'd archived.
+- **Small and fast.** About 3 MB, built with [Tauri](https://tauri.app) instead of a bundled Chrome.
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/screenshot-reader-sepia.png" alt="Reading an article on a sepia page"></td>
+    <td width="50%"><img src="docs/screenshot-settings.png" alt="Reading settings: text size, font, width and page colour"></td>
+  </tr>
+  <tr>
+    <td align="center">A clean reader: white, sepia or night pages</td>
+    <td align="center">Pick the size, font and line width</td>
+  </tr>
+</table>
+
+## Install
+
+1. Download the latest version from **[Releases](https://github.com/anon5376/readbox/releases/latest)**: the `.dmg` for Mac (Apple Silicon and Intel) or the `-setup.exe` for Windows.
+2. Readbox isn't signed with a paid developer certificate yet, so your computer asks once:
+   - **Mac:** drag Readbox into Applications and open it. When macOS says it can't check the app, go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+   - **Windows:** if SmartScreen appears, click **More info → Run anyway**.
+3. Optional: add the [browser extension](#browser-extension) to save pages with one click.
+
+> **Status: early (0.1).** Saving, importing, the reading list and the reader work. Bugs are likely; please [open an issue](https://github.com/anon5376/readbox/issues).
+>
+> **Built with AI.** Most of the code is written by AI coding agents, directed and tested by a human.
 
 ## Using it
 
 - Paste a link into the box at the top (or press ⌘V / Ctrl+V anywhere in the window) to save it.
 - Click an article to read it. **Aa** changes text size, font, width and theme. Esc goes back.
 - Archive what you've read; Delete moves an article to the system Trash.
-- **Settings** shows where your library lives and lets you pick another folder.
+- **Settings** has the appearance (light or dark), your library folder, reading options and the import.
 - On a Mac, closing the window keeps Readbox running in the Dock (so the extension can save); ⌘Q quits.
 
 ## Moving from Pocket, Omnivore or Instapaper
@@ -36,9 +79,11 @@ The extension saves the page you're looking at, exactly as you see it, so articl
 - Right-click a page or a link for **Save page / Save link to Readbox**.
 - The button shows **✓** when saved and **!** with a notification if something went wrong (usually: the app isn't open).
 
-**Install (Chrome, Brave, Edge, Helium, Arc):** open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the `extension` folder.
+The extension isn't in the browser stores yet. Download `Readbox-browser-extension.zip` from [Releases](https://github.com/anon5376/readbox/releases/latest) and unzip it (or use the `extension` folder of this repository).
 
-**Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `extension/manifest.json`. Firefox removes it when it restarts until the extension is published.
+**Chrome, Brave, Edge, Helium, Arc:** open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked** and pick the unzipped folder.
+
+**Firefox:** open `about:debugging#/runtime/this-firefox`, click **Load Temporary Add-on** and pick `manifest.json` in the unzipped folder. Firefox removes it when it restarts until the extension is published.
 
 How it talks to the app: Readbox listens on `127.0.0.1:47612` and only accepts JSON requests from browser extensions, so websites can't add things to your library.
 
