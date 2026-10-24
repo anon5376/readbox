@@ -6,7 +6,7 @@ A calm read-later app for Mac and Windows. Save an article, read it later, offli
 - **Your library is a folder of plain files.** Put it in Dropbox, iCloud Drive or OneDrive to sync between computers. You can open the files without the app.
 - **Small and fast.** Built with [Tauri](https://tauri.app), not a bundled Chrome.
 
-> **Status:** early. Saving (paste a link, or the browser extension), the reading list and the reader work. Pocket/Omnivore import and Windows builds come next.
+> **Status:** early. Saving (paste a link, or the browser extension), importing from Pocket, Omnivore and Instapaper, the reading list and the reader work. Windows builds come next.
 
 > **Built with AI.** Most of the code is written by AI coding agents, directed and tested by a human. Bugs are likely at this stage; please open an issue.
 
@@ -17,6 +17,10 @@ A calm read-later app for Mac and Windows. Save an article, read it later, offli
 - Archive what you've read; Delete moves an article to the system Trash.
 - **Settings** shows where your library lives and lets you pick another folder.
 - On a Mac, closing the window keeps Readbox running in the Dock (so the extension can save); ⌘Q quits.
+
+## Moving from Pocket, Omnivore or Instapaper
+
+Open **Settings → Import from Pocket, Omnivore or Instapaper…** and choose the file you downloaded from them (Pocket's `.csv`/`.zip`/`.html`, Omnivore's `.zip`, Instapaper's `.csv`). Readbox keeps each article's original date, whether you'd archived it, and Omnivore's reading position. It uses the article text from Omnivore exports and downloads everything else; articles that are gone from the web are kept as a title and link. `samples/pocket-sample.csv` is a small file to try it with.
 
 ## Browser extension
 

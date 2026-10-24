@@ -516,3 +516,50 @@ input:focus-visible,
   border-top: 1px solid var(--border);
   margin: 2em 0;
 }
+
+/* Import */
+
+.import-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.import-banner.failed {
+  border-color: var(--danger);
+}
+
+.import-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.import-title {
+  font-weight: 600;
+}
+
+.import-notes {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+.progress.wide {
+  max-width: none;
+}
+
+.settings-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.settings-section {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}

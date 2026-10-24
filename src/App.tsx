@@ -6,6 +6,7 @@ import { Reader } from "./components/Reader";
 import { api, type ArticleMeta } from "./lib/api";
 import { useReaderPrefs } from "./lib/prefs";
 import { sameLink, saveLink, savePage } from "./lib/save";
+import { useImport } from "./lib/useImport";
 import "./App.css";
 
 interface SaveOutcome {
@@ -46,6 +47,12 @@ export default function App() {
   const articlesRef = useRef(articles);
   articlesRef.current = articles;
 
+  const addArticle = useCallback(
+    (meta: ArticleMeta) => setArticles((list) => [meta, ...list].sort((a, b) => b.savedAt.localeCompare(a.savedAt))),
+    [],
+  );
+  const imports = useImport(useCallback(() => articlesRef.current, []), addArticle);
+
   const runSave = useCallback(async (save: PendingSave): Promise<SaveOutcome> => {
     const existing = articlesRef.current.find((a) => sameLink(a.url, save.link));
     if (existing) {
@@ -55,7 +62,7 @@ export default function App() {
     setPending((list) => [save, ...list.filter((s) => s.key !== save.key)]);
     try {
       const meta = save.html ? await savePage(save.html, save.link) : await saveLink(save.link);
-      setArticles((list) => [meta, ...list]);
+      addArticle(meta);
       setPending((list) => list.filter((s) => s.key !== save.key));
       return { ok: true, title: meta.title };
     } catch (e) {
@@ -63,7 +70,7 @@ export default function App() {
       setPending((list) => list.map((s) => (s.key === save.key ? { ...save, error } : s)));
       return { ok: false, error };
     }
-  }, []);
+  }, [addArticle]);
 
   const save = useCallback(
     (link: string, html?: string) => runSave({ key: nextKey.current++, link: link.trim(), html }),
@@ -131,6 +138,10 @@ export default function App() {
           onChange={replace}
           onTrashed={(a) => setArticles((list) => list.filter((x) => x.dir !== a.dir))}
           onLibraryChanged={refresh}
+          importJob={imports.job}
+          onImport={imports.start}
+          onStopImport={imports.stop}
+          onDismissImport={imports.dismiss}
         />
       )}
     </main>

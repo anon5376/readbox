@@ -26,7 +26,7 @@
 
 1. ~~Save links, reading list, offline reader~~
 2. ~~Browser extension~~
-3. Import from Pocket and Omnivore export files; export everything as HTML/Markdown
+3. ~~Import from Pocket, Omnivore and Instapaper~~ (export isn't needed: the library is already plain files)
 4. Windows build and installers (unsigned for now; SignPath Foundation for free signing later)
 5. Beta, then launch
 6. Later: phone (web version, or iPhone once there's budget)

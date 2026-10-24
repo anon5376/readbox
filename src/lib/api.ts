@@ -25,6 +25,8 @@ export interface NewArticle {
   wordCount: number;
   savedAt: string;
   html: string;
+  status?: Status;
+  progress?: number;
 }
 
 export const api = {

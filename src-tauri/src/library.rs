@@ -66,6 +66,11 @@ pub struct NewArticle {
     pub word_count: u32,
     pub saved_at: String,
     pub html: String,
+    /// Imports keep the state they had in the other app.
+    #[serde(default)]
+    pub status: Option<Status>,
+    #[serde(default)]
+    pub progress: Option<f64>,
 }
 
 #[derive(Debug, Default, Deserialize)]
@@ -117,8 +122,8 @@ impl Library {
             excerpt: new.excerpt,
             word_count: new.word_count,
             saved_at: new.saved_at,
-            status: Status::Unread,
-            progress: 0.0,
+            status: new.status.unwrap_or(Status::Unread),
+            progress: new.progress.unwrap_or(0.0).clamp(0.0, 1.0),
         };
         write_atomic(&path.join(HTML_FILE), new.html.as_bytes())?;
         self.write_meta(&path, &meta)?;
@@ -234,6 +239,8 @@ mod tests {
             word_count: 1200,
             saved_at: saved_at.into(),
             html: "<p>Hello</p>".into(),
+            status: None,
+            progress: None,
         }
     }
 
@@ -248,6 +255,17 @@ mod tests {
         let listed = lib.list().unwrap();
         assert_eq!(listed, vec![newer.clone(), older]);
         assert_eq!(lib.read_html(&newer.dir).unwrap(), "<p>Hello</p>");
+    }
+
+    #[test]
+    fn imports_keep_their_state() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let mut new = sample("Imported", "2020-01-01T00:00:00Z");
+        new.status = Some(Status::Archived);
+        new.progress = Some(0.4);
+        let meta = lib.create(new).unwrap();
+        assert_eq!((meta.status, meta.progress), (Status::Archived, 0.4));
     }
 
     #[test]
