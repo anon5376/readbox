@@ -176,6 +176,11 @@ impl Library {
 
     pub fn update(&self, dir: &str, patch: MetaPatch) -> io::Result<ArticleMeta> {
         let path = self.article_path(dir)?;
+        // Keep a stable lock file: meta.json is replaced on every save. Hold the
+        // lock through the read and write so other processes cannot lose a patch.
+        let lock = fs::OpenOptions::new().write(true).create(true).truncate(false)
+            .open(path.join(".meta.lock"))?;
+        lock.lock()?;
         let raw = fs::read(path.join(META_FILE))?;
         let mut meta: ArticleMeta = serde_json::from_slice(&raw)?;
         meta.dir = dir.to_string();
@@ -366,6 +371,67 @@ mod tests {
         assert_eq!(updated.status, Status::Archived);
         assert_eq!(updated.progress, 1.0);
         assert_eq!(lib.list().unwrap()[0], updated);
+    }
+
+    #[test]
+    fn concurrent_metadata_patches_are_preserved() {
+        use std::io::{BufRead, BufReader, Read};
+        use std::process::{Command, Stdio};
+
+        // Run each patch in a separate process, as with two copies of Readbox.
+        if let Ok(patch) = std::env::var("READBOX_TEST_METADATA_PATCH") {
+            let lib = Library::new(std::env::var_os("READBOX_LIBRARY").unwrap());
+            let dir = std::env::var("READBOX_TEST_ARTICLE_DIR").unwrap();
+            println!("READBOX_METADATA_READY");
+            std::io::stdout().flush().unwrap();
+            let mut start = String::new();
+            std::io::stdin().read_line(&mut start).unwrap();
+            assert_eq!(start, "go\n");
+            lib.update(&dir, serde_json::from_str(&patch).unwrap()).unwrap();
+            return;
+        }
+
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let mut article = sample("Post", "2026-10-01T00:00:00Z");
+        // Keep the read/modify/write windows overlapping without sleeps.
+        article.excerpt = Some("Saved excerpt. ".repeat(64 * 1024));
+        let meta = lib.create(article).unwrap();
+        let mut writers = Vec::new();
+        for patch in [r#"{"status":"archived"}"#, r#"{"progress":0.75}"#, r#"{"thumbnail":"images/cover.jpg"}"#] {
+            let mut child = Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "library::tests::concurrent_metadata_patches_are_preserved", "--nocapture"])
+                .env("READBOX_LIBRARY", tmp.path())
+                .env("READBOX_TEST_ARTICLE_DIR", &meta.dir)
+                .env("READBOX_TEST_METADATA_PATCH", patch)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .spawn().unwrap();
+            let mut output = BufReader::new(child.stdout.take().unwrap());
+            let mut line = String::new();
+            loop {
+                line.clear();
+                assert!(output.read_line(&mut line).unwrap() > 0, "metadata writer exited before starting");
+                if line.trim_end().ends_with("READBOX_METADATA_READY") {
+                    break;
+                }
+            }
+            writers.push((child, output));
+        }
+        for (child, _) in &mut writers {
+            child.stdin.take().unwrap().write_all(b"go\n").unwrap();
+        }
+        for (mut child, mut output) in writers {
+            let mut log = String::new();
+            output.read_to_string(&mut log).unwrap();
+            assert!(child.wait().unwrap().success(), "metadata writer failed: {log}");
+        }
+
+        let updated = lib.list().unwrap().pop().unwrap();
+        assert_eq!(updated.status, Status::Archived);
+        assert_eq!(updated.progress, 0.75);
+        assert_eq!(updated.thumbnail.as_deref(), Some("images/cover.jpg"));
+        assert_eq!(updated.excerpt, meta.excerpt);
     }
 
     #[test]
