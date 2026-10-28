@@ -13,7 +13,7 @@
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fs;
-use std::io;
+use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 const META_FILE: &str = "meta.json";
@@ -227,11 +227,18 @@ impl Library {
 }
 
 /// Writes to a temp file and renames it into place, so a sync tool or a crash
-/// never sees a half-written file.
+/// never sees a half-written file. Each writer owns its temp file so concurrent
+/// saves cannot truncate or rename each other's data.
 fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
-    let tmp = path.with_extension("tmp");
-    fs::write(&tmp, bytes)?;
-    fs::rename(&tmp, path)
+    let tmp = path.with_extension(format!("{}.tmp", uuid::Uuid::new_v4().simple()));
+    let mut file = fs::OpenOptions::new().write(true).create_new(true).open(&tmp)?;
+    let written = file.write_all(bytes);
+    drop(file);
+    let result = written.and_then(|()| fs::rename(&tmp, path));
+    if result.is_err() {
+        let _ = fs::remove_file(&tmp);
+    }
+    result
 }
 
 fn slugify(title: &str) -> String {
@@ -280,6 +287,44 @@ mod tests {
         let listed = lib.list().unwrap();
         assert_eq!(listed, vec![newer.clone(), older]);
         assert_eq!(lib.read_html(&newer.dir).unwrap(), "<p>Hello</p>");
+    }
+
+    #[test]
+    fn concurrent_article_writes_keep_complete_content() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let meta = lib.create(sample("Post", "2026-10-01T00:00:00Z")).unwrap();
+        let bodies: Vec<String> = (b'a'..=b'p')
+            .map(|letter| format!("<p>{}</p>", char::from(letter).to_string().repeat(128 * 1024)))
+            .collect();
+        let ready = std::sync::Barrier::new(bodies.len());
+        let results: Vec<_> = std::thread::scope(|scope| {
+            let writers: Vec<_> = bodies.iter().map(|html| scope.spawn(|| {
+                ready.wait();
+                lib.write_html(&meta.dir, html)
+            })).collect();
+            writers.into_iter().map(|writer| writer.join().unwrap()).collect()
+        });
+
+        assert!(results.iter().all(Result::is_ok), "concurrent saves failed: {results:?}");
+        assert!(bodies.contains(&lib.read_html(&meta.dir).unwrap()), "saved content was mixed or truncated");
+        let article = tmp.path().join("articles").join(&meta.dir);
+        assert_eq!(fs::read_dir(article).unwrap().count(), 2, "save left temporary files");
+    }
+
+    #[test]
+    fn failed_article_write_preserves_destination_and_cleans_up() {
+        let tmp = tempfile::tempdir().unwrap();
+        let lib = Library::new(tmp.path());
+        let article = tmp.path().join("articles/post");
+        // A sync conflict has put a directory where the article file should be.
+        let existing = article.join(HTML_FILE).join("keep.txt");
+        fs::create_dir_all(existing.parent().unwrap()).unwrap();
+        fs::write(&existing, "keep this content").unwrap();
+
+        assert!(lib.write_html("post", "<p>Replacement</p>").is_err());
+        assert_eq!(fs::read_to_string(existing).unwrap(), "keep this content");
+        assert_eq!(fs::read_dir(article).unwrap().count(), 1, "failed save left temporary files");
     }
 
     #[test]
