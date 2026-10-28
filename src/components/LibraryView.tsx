@@ -5,8 +5,10 @@ import { readingMinutes } from "../lib/extract";
 import { shortcut } from "../lib/platform";
 import type { ReaderPrefs } from "../lib/prefs";
 import type { ImportJob } from "../lib/useImport";
+import { searchArticles } from "../lib/search";
 import { SegmentedControl } from "./affectui/segmented-control";
 import { Icon } from "./Icon";
+import { LibrarySearch } from "./LibrarySearch";
 import { AnimatedCounter } from "./rareui/animated-counter";
 import { BounceNav } from "./rareui/bounce-nav";
 import { DeleteButton } from "./rareui/delete-button";
@@ -23,6 +25,10 @@ export interface PendingSave {
 
 interface Props {
   articles: ArticleMeta[];
+  tab: Status;
+  onTabChange: (tab: Status) => void;
+  query: string;
+  onQueryChange: (query: string) => void;
   pending: PendingSave[];
   libraryDir: string;
   prefs: ReaderPrefs;
@@ -49,8 +55,7 @@ const TABS: { key: Status; label: string }[] = [
 const ARRIVING_MS = 10_000;
 
 export function LibraryView(props: Props) {
-  const { articles, pending, libraryDir, onSave } = props;
-  const [tab, setTab] = useState<Status>("unread");
+  const { articles, pending, libraryDir, onSave, tab, onTabChange: setTab, query, onQueryChange } = props;
   const [link, setLink] = useState("");
   const [showSettings, setShowSettings] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -60,7 +65,7 @@ export function LibraryView(props: Props) {
     unread: articles.filter((a) => a.status === "unread").length,
     archived: articles.filter((a) => a.status === "archived").length,
   };
-  const shown = articles.filter((a) => a.status === tab);
+  const shown = searchArticles(articles.filter((a) => a.status === tab), query);
   const importing = props.importJob?.running ?? false;
 
   const submit = (e: FormEvent) => {
@@ -68,6 +73,7 @@ export function LibraryView(props: Props) {
     if (!link.trim()) return;
     onSave(link);
     setLink("");
+    onQueryChange("");
     setTab("unread");
   };
   const chooseImport = () => fileInput.current?.click();
@@ -119,7 +125,7 @@ export function LibraryView(props: Props) {
             </span>
           </div>
           <div className="toolbar-spacer" data-tauri-drag-region />
-          <form className="link-form" onSubmit={submit} role="search">
+          <form className="link-form" onSubmit={submit}>
             <label className="link-field">
               <Icon name="link" size={15} />
               <input
@@ -142,6 +148,8 @@ export function LibraryView(props: Props) {
             <Icon name="settings" />
           </button>
         </header>
+
+        <LibrarySearch query={query} onChange={onQueryChange} tab={tab} count={shown.length} active={!showSettings} />
 
         <div className="main-scroll">
           {props.importJob && (
@@ -169,7 +177,13 @@ export function LibraryView(props: Props) {
             {shown.map((article) => (
               <ArticleRow key={article.dir} {...props} article={article} libraryDir={libraryDir} />
             ))}
-            {shown.length === 0 && pending.length === 0 && !importing && (
+            {shown.length === 0 && query.trim() && (
+              <div className="empty">
+                <h2>No matching articles</h2>
+                <p>Try another title, author, site or link, or search {tab === "unread" ? "Archive" : "Unread"}.</p>
+              </div>
+            )}
+            {shown.length === 0 && !query.trim() && pending.length === 0 && !importing && (
               <EmptyState tab={tab} onImport={chooseImport} onPaste={() => linkInput.current?.focus()} />
             )}
           </div>
@@ -199,6 +213,7 @@ export function LibraryView(props: Props) {
           if (file) {
             setShowSettings(false);
             setTab("unread");
+            onQueryChange("");
             props.onImport(file);
           }
         }}

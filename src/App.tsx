@@ -3,7 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LibraryView, type PendingSave } from "./components/LibraryView";
 import { Reader } from "./components/Reader";
-import { api, type ArticleMeta } from "./lib/api";
+import { api, type ArticleMeta, type Status } from "./lib/api";
 import { useReaderPrefs } from "./lib/prefs";
 import { sameLink, saveLink, savePage } from "./lib/save";
 import { useImport } from "./lib/useImport";
@@ -20,6 +20,8 @@ export default function App() {
   const [articles, setArticles] = useState<ArticleMeta[]>([]);
   const [libraryDir, setLibraryDir] = useState("");
   const [openDir, setOpenDir] = useState<string | null>(null);
+  const [libraryTab, setLibraryTab] = useState<Status>("unread");
+  const [searchQuery, setSearchQuery] = useState("");
   const [pending, setPending] = useState<PendingSave[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [prefs, updatePrefs] = useReaderPrefs();
@@ -129,6 +131,10 @@ export default function App() {
       ) : (
         <LibraryView
           articles={articles}
+          tab={libraryTab}
+          onTabChange={setLibraryTab}
+          query={searchQuery}
+          onQueryChange={setSearchQuery}
           pending={pending}
           libraryDir={libraryDir}
           prefs={prefs}

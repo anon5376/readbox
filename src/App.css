@@ -516,6 +516,28 @@ kbd {
   color: var(--secondary);
 }
 
+.library-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 24px;
+}
+
+.search-field {
+  width: min(360px, 100%);
+  min-width: 0;
+}
+
+.search-field input::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.search-count {
+  color: var(--secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 
 .compact-tabs,
 .compact-only {
